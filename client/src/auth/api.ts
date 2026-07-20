@@ -1,4 +1,6 @@
-const BASE = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:3001';
+// Dev: the server is on :3001. Prod: same origin (relative URLs) — the server
+// serves this bundle, so REST calls hit the same host on any domain / tunnel.
+const BASE = import.meta.env.VITE_SERVER_URL ?? (import.meta.env.DEV ? 'http://localhost:3001' : '');
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }

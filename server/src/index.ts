@@ -1,5 +1,8 @@
 import { createServer as createHttpServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -29,7 +32,9 @@ import { verifyToken } from './auth/token.js';
 import { loadPlaylistSchema, inviteSchema } from './auth/validators.js';
 
 const MAX_CHAT_LEN = 500;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
+// When CLIENT_ORIGIN is unset, reflect the request origin — this works for a
+// single-origin deploy (client served by this server) and for tunnels/domains.
+const CLIENT_ORIGIN: string | boolean = process.env.CLIENT_ORIGIN ?? true;
 
 export function createServer(port = 3001, injectedDb?: DB) {
   const db = injectedDb ?? (() => { const d = openDb(); migrate(d); return d; })();
@@ -326,6 +331,17 @@ export function createServer(port = 3001, injectedDb?: DB) {
     });
   });
 
+  // Serve the built client from this server (single-origin production / tunnel).
+  // In local dev the client runs on Vite (5173) and no dist exists, so this is skipped.
+  const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');
+  if (fs.existsSync(path.join(clientDist, 'index.html'))) {
+    app.use(express.static(clientDist));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
+      res.sendFile(path.join(clientDist, 'index.html'));
+    });
+  }
+
   httpServer.listen(port);
   return {
     io,
@@ -340,8 +356,15 @@ export function createServer(port = 3001, injectedDb?: DB) {
   };
 }
 
-if (process.argv[1] && process.argv[1].endsWith('index.ts')) {
-  const port = Number(process.env.PORT ?? 3001);
-  createServer(port);
+if (process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'))) {
+  const port = Number(process.env.PORT) || 3001; // tolerate an empty PORT env
+  const server = createServer(port);
   console.log(`Wavelength server listening on :${port}`);
+  const shutdown = (sig: string) => {
+    console.log(`Received ${sig}, shutting down…`);
+    server.close().then(() => process.exit(0));
+    setTimeout(() => process.exit(1), 10000).unref();
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }

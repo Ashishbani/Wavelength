@@ -6,12 +6,10 @@ export interface TokenPayload {
 
 export function getSecret(): string {
   const s = process.env.JWT_SECRET;
-  if (s) return s;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET must be set in production');
-  }
-  console.warn('[wavelength] JWT_SECRET not set — using an insecure dev secret.');
-  return 'dev-insecure-secret';
+  // A real secret is required to run the server anywhere (no NODE_ENV gating).
+  if (s && s !== 'change-me-in-production') return s;
+  if (process.env.NODE_ENV === 'test') return 'test-secret';
+  throw new Error('JWT_SECRET must be set to a strong, unique secret before starting the server (see .env.example).');
 }
 
 export function signToken(payload: TokenPayload): string {

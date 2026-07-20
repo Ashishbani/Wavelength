@@ -11,7 +11,8 @@ export function cookieOptions() {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    // Set COOKIE_SECURE=true when served over HTTPS (deploy / tunnel / domain).
+    secure: process.env.COOKIE_SECURE === 'true',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/',
   };
