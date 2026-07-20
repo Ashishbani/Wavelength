@@ -282,24 +282,19 @@ button.link:hover { background: none; filter: brightness(1.2); }
 @media (max-width: 880px) { .room-grid { grid-template-columns: 1fr; } }
 
 /* now-playing stage */
-.stage {
-  display: flex; flex-direction: column; gap: 16px; align-items: center;
-  /* Refined 16:9 player, height-capped and centered in the column. */
-  --stage-w: min(100%, 90vh);
-}
+.stage { display: flex; flex-direction: column; gap: 16px; }
 .player-wrap {
   position: relative; border-radius: var(--radius); overflow: hidden;
   background: #000; box-shadow: var(--shadow);
-  width: var(--stage-w); aspect-ratio: 16 / 9; margin: 0 auto;
+  width: 100%; height: min(58vh, 540px);
 }
 .player-wrap > div, .player-wrap iframe { display: block; width: 100% !important; height: 100% !important; border: 0; }
 .stage-empty {
-  width: var(--stage-w); aspect-ratio: 16 / 9; margin: 0 auto;
+  width: 100%; height: min(48vh, 440px); min-height: 240px;
   display: grid; place-items: center; text-align: center;
   color: var(--muted); border: 1px dashed var(--border-strong); border-radius: var(--radius);
   background: var(--surface);
 }
-.stage > .np-card { width: var(--stage-w); margin: 0 auto; }
 
 /* now-playing card with ambient album art */
 .np-card { position: relative; overflow: hidden; }
@@ -340,9 +335,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .track .fill { position: absolute; inset: 0; width: 0; background: var(--grad); border-radius: 999px; }
 
 /* transport */
-.transport { display: flex; align-items: center; gap: 12px; }
-.transport .spacer { flex: 1; }
-.transport-main { display: flex; align-items: center; gap: 14px; }
+.transport { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.transport-extra { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .play-btn {
   width: 54px; height: 54px; border-radius: 50%; border: none;
   background: var(--grad); color: white;
@@ -351,8 +345,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
   animation: glow 3s ease-in-out infinite;
 }
 .play-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
-.transport-main .round-btn, .play-btn { flex-shrink: 0; padding: 0; }
-.transport-main svg, .play-btn svg { display: block; }
+.transport .round-btn, .play-btn { flex-shrink: 0; padding: 0; }
+.transport svg, .play-btn svg { display: block; }
 @keyframes glow {
   0%, 100% { box-shadow: 0 10px 28px rgba(139, 92, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
   50% { box-shadow: 0 12px 34px rgba(255, 92, 168, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3); }

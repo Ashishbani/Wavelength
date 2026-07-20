@@ -268,26 +268,27 @@ export default function Room({
             </div>
 
             <div className="transport" style={{ marginTop: 14 }}>
-              <div className="transport-main">
-                <button className="round-btn" onClick={restart} title="Restart track"><PrevIcon /></button>
-                <button className="play-btn" onClick={isPlaying ? hostPause : hostPlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
-                <button className="round-btn" onClick={hostNext} title="Next track"><NextIcon /></button>
-              </div>
-              <span className="spacer" />
-              {user && <button className="ghost" onClick={saveQueueAsPlaylist}>Save queue</button>}
-              {user && playlists.length > 0 && (
-                <select className="control-select" onChange={(e) => { if (e.target.value) loadPlaylist(e.target.value); e.target.value = ''; }} defaultValue="">
-                  <option value="" disabled>Load playlist…</option>
-                  {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              )}
-              {user && onlineFriends.length > 0 && (
-                <select className="control-select" onChange={(e) => { if (e.target.value) inviteFriend(e.target.value); e.target.value = ''; }} defaultValue="">
-                  <option value="" disabled>Invite a friend…</option>
-                  {onlineFriends.map((f) => <option key={f.userId} value={f.userId}>@{f.username}</option>)}
-                </select>
-              )}
+              <button className="round-btn" onClick={restart} title="Restart track"><PrevIcon /></button>
+              <button className="play-btn" onClick={isPlaying ? hostPause : hostPlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+              <button className="round-btn" onClick={hostNext} title="Next track"><NextIcon /></button>
             </div>
+            {user && (
+              <div className="transport-extra">
+                <button className="ghost" onClick={saveQueueAsPlaylist}>Save queue</button>
+                {playlists.length > 0 && (
+                  <select className="control-select" onChange={(e) => { if (e.target.value) loadPlaylist(e.target.value); e.target.value = ''; }} defaultValue="">
+                    <option value="" disabled>Load playlist…</option>
+                    {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                )}
+                {onlineFriends.length > 0 && (
+                  <select className="control-select" onChange={(e) => { if (e.target.value) inviteFriend(e.target.value); e.target.value = ''; }} defaultValue="">
+                    <option value="" disabled>Invite a friend…</option>
+                    {onlineFriends.map((f) => <option key={f.userId} value={f.userId}>@{f.username}</option>)}
+                  </select>
+                )}
+              </div>
+            )}
           </div>
 
         </section>
