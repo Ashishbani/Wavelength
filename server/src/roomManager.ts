@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { RoomState, PlaybackState, QueueItem } from '@wavelength/shared';
+import type { RoomState, PlaybackState, QueueItem, PublicRoomInfo } from '@wavelength/shared';
 
 function defaultGenCode(): string {
   return randomUUID().slice(0, 6).toUpperCase();
@@ -9,12 +9,15 @@ function emptyPlayback(): PlaybackState {
   return { videoId: null, isPlaying: false, positionSec: 0, lastUpdateServerTs: 0 };
 }
 
+/** Fields a caller supplies when queueing a track; id + votes are assigned here. */
+export type NewQueueItem = Pick<QueueItem, 'videoId' | 'title' | 'addedBy'>;
+
 export class RoomManager {
   private rooms = new Map<string, RoomState>();
 
   constructor(private genCode: () => string = defaultGenCode) {}
 
-  createRoom(hostId: string, hostName: string): RoomState {
+  createRoom(hostId: string, hostName: string, isPublic = true): RoomState {
     let code = this.genCode();
     while (this.rooms.has(code)) code = this.genCode();
     const state: RoomState = {
@@ -23,12 +26,13 @@ export class RoomManager {
       members: [{ id: hostId, name: hostName }],
       queue: [],
       playback: emptyPlayback(),
+      isPublic,
     };
     this.rooms.set(code, state);
     return state;
   }
 
-  createRoomWithCode(code: string, hostId: string, hostName: string): RoomState {
+  createRoomWithCode(code: string, hostId: string, hostName: string, isPublic = true): RoomState {
     if (this.rooms.has(code)) throw new Error('CODE_IN_USE');
     const state: RoomState = {
       code,
@@ -36,6 +40,7 @@ export class RoomManager {
       members: [{ id: hostId, name: hostName }],
       queue: [],
       playback: emptyPlayback(),
+      isPublic,
     };
     this.rooms.set(code, state);
     return state;
@@ -66,9 +71,24 @@ export class RoomManager {
     return null;
   }
 
-  addToQueue(code: string, item: QueueItem): RoomState {
+  addToQueue(code: string, item: NewQueueItem): RoomState {
     const room = this.requireRoom(code);
-    room.queue.push(item);
+    room.queue.push({ id: randomUUID(), votes: 0, ...item });
+    return room;
+  }
+
+  /** Upvote a queued item and keep the queue ordered by votes (desc, stable). */
+  voteQueueItem(code: string, itemId: string): RoomState {
+    const room = this.requireRoom(code);
+    const item = room.queue.find((q) => q.id === itemId);
+    if (item) {
+      item.votes += 1;
+      // Stable sort: higher votes first, otherwise preserve insertion order.
+      room.queue = room.queue
+        .map((q, i) => ({ q, i }))
+        .sort((a, b) => b.q.votes - a.q.votes || a.i - b.i)
+        .map((x) => x.q);
+    }
     return room;
   }
 
@@ -109,6 +129,24 @@ export class RoomManager {
 
   isHost(code: string, id: string): boolean {
     return this.rooms.get(code)?.hostId === id;
+  }
+
+  /** Public, occupied rooms for the lobby discovery grid, busiest first. */
+  listPublicRooms(): PublicRoomInfo[] {
+    return [...this.rooms.values()]
+      .filter((r) => r.isPublic && r.members.length > 0)
+      .map((r) => ({
+        code: r.code,
+        name: this.roomLabel(r),
+        memberCount: r.members.length,
+        nowPlaying: !!r.playback.videoId && r.playback.isPlaying,
+      }))
+      .sort((a, b) => b.memberCount - a.memberCount);
+  }
+
+  private roomLabel(room: RoomState): string {
+    const host = room.members.find((m) => m.id === room.hostId);
+    return host ? `${host.name}'s room` : `Room ${room.code}`;
   }
 
   private requireRoom(code: string): RoomState {

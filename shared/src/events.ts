@@ -4,9 +4,11 @@ export interface Member {
 }
 
 export interface QueueItem {
+  id: string;
   videoId: string;
   title: string;
   addedBy: string;
+  votes: number;
 }
 
 export interface PlaybackState {
@@ -22,6 +24,7 @@ export interface RoomState {
   members: Member[];
   queue: QueueItem[];
   playback: PlaybackState;
+  isPublic: boolean;
 }
 
 export interface ChatMessage {
@@ -36,12 +39,24 @@ export interface PresenceInfo {
   roomCode: string | null;
 }
 
+/** A live, public room as shown on the lobby "Explore" grid. */
+export interface PublicRoomInfo {
+  code: string;
+  name: string;
+  memberCount: number;
+  nowPlaying: boolean;
+}
+
+/** Allowed reaction emojis (validated server-side). */
+export const REACTIONS = ['❤️', '🔥', '😂', '🎉', '🙌', '😮', '💯', '🎵'] as const;
+export type ReactionEmoji = (typeof REACTIONS)[number];
+
 export type CreateJoinResult =
   | { ok: true; state: RoomState; selfId: string }
   | { ok: false; error: string };
 
 export interface ClientToServerEvents {
-  'room:create': (payload: { name: string }, cb: (res: CreateJoinResult) => void) => void;
+  'room:create': (payload: { name: string; isPublic?: boolean }, cb: (res: CreateJoinResult) => void) => void;
   'room:join': (payload: { code: string; name: string }, cb: (res: CreateJoinResult) => void) => void;
   'playback:play': (payload: { positionSec: number }) => void;
   'playback:pause': (payload: { positionSec: number }) => void;
@@ -49,8 +64,12 @@ export interface ClientToServerEvents {
   'playback:heartbeat': (payload: { positionSec: number }) => void;
   'queue:add': (payload: { videoId: string; title: string }) => void;
   'queue:next': () => void;
+  'queue:vote': (payload: { itemId: string }) => void;
   'queue:loadPlaylist': (payload: { playlistId: string }) => void;
   'chat:send': (payload: { text: string }) => void;
+  'reaction:send': (payload: { emoji: string }) => void;
+  'lobby:subscribe': () => void;
+  'lobby:unsubscribe': () => void;
   'time:ping': (payload: { t0: number }, cb: (res: { t0: number; serverTime: number }) => void) => void;
   'whoami': (cb: (res: { userId: string | null }) => void) => void;
   'invite:send': (payload: { toUserId: string }) => void;
@@ -60,6 +79,8 @@ export interface ServerToClientEvents {
   'room:state': (state: RoomState) => void;
   'playback:update': (playback: PlaybackState) => void;
   'chat:message': (msg: ChatMessage) => void;
+  'reaction:show': (payload: { emoji: string; name: string }) => void;
+  'lobby:rooms': (payload: { rooms: PublicRoomInfo[] }) => void;
   'presence:snapshot': (payload: { friends: PresenceInfo[] }) => void;
   'presence:update': (payload: PresenceInfo) => void;
   'friend:requestReceived': (payload: { fromUsername: string; fromDisplayName: string }) => void;

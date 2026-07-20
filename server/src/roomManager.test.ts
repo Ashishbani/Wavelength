@@ -98,4 +98,31 @@ describe('RoomManager', () => {
     mgr.createRoomWithCode('ABC123', 'h1', 'Alice');
     expect(() => mgr.createRoomWithCode('ABC123', 'h2', 'Bob')).toThrow('CODE_IN_USE');
   });
+
+  it('assigns ids and votes to queued items', () => {
+    mgr.createRoom('h1', 'Alice');
+    const state = mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    expect(state.queue[0].id).toBeTruthy();
+    expect(state.queue[0].votes).toBe(0);
+  });
+
+  it('upvotes a queued item and reorders by votes', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    mgr.addToQueue('ROOM0', { videoId: 'oHg5SJYRHA0', title: 'B', addedBy: 'Bob' });
+    const bId = mgr.getRoom('ROOM0')!.queue[1].id;
+    const after = mgr.voteQueueItem('ROOM0', bId);
+    expect(after.queue[0].title).toBe('B');
+    expect(after.queue[0].votes).toBe(1);
+  });
+
+  it('lists public occupied rooms busiest first and excludes private ones', () => {
+    mgr.createRoom('h1', 'Alice');          // ROOM0 public, 1
+    mgr.createRoom('h2', 'Bob');            // ROOM1 public, 1
+    mgr.joinRoom('ROOM1', 'u3', 'Cara');    // ROOM1 -> 2
+    mgr.createRoom('h4', 'Dee', false);     // ROOM2 private
+    const list = mgr.listPublicRooms();
+    expect(list.map((r) => r.code)).toEqual(['ROOM1', 'ROOM0']);
+    expect(list[0].memberCount).toBe(2);
+  });
 });

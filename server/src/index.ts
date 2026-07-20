@@ -9,7 +9,7 @@ import type {
   ServerToClientEvents,
   CreateJoinResult,
 } from '@wavelength/shared';
-import { isValidVideoId } from '@wavelength/shared';
+import { isValidVideoId, REACTIONS } from '@wavelength/shared';
 import type { PresenceInfo } from '@wavelength/shared';
 import { RoomManager } from './roomManager.js';
 import { openDb, migrate, type DB } from './db/db.js';
@@ -78,6 +78,11 @@ export function createServer(port = 3001, injectedDb?: DB) {
     }
   }
 
+  const LOBBY = 'lobby';
+  function broadcastLobby() {
+    io.to(LOBBY).emit('lobby:rooms', { rooms: rooms.listPublicRooms() });
+  }
+
   // Identify the socket's user from the same cookie.
   io.use((socket, next) => {
     const raw = socket.handshake.headers.cookie ?? '';
@@ -112,6 +117,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
     if (pb.videoId) logTrackStart(code, pb.videoId, upcoming?.title ?? pb.videoId);
     const room = rooms.getRoom(code);
     if (room) io.to(code).emit('room:state', room);
+    broadcastLobby();
   }
 
   io.on('connection', (socket) => {
@@ -128,13 +134,14 @@ export function createServer(port = 3001, injectedDb?: DB) {
 
     socket.on('whoami', (cb) => cb({ userId: (socket.data as { userId?: string }).userId ?? null }));
 
-    socket.on('room:create', ({ name }, cb: (r: CreateJoinResult) => void) => {
+    socket.on('room:create', ({ name, isPublic }, cb: (r: CreateJoinResult) => void) => {
       const clean = (name ?? '').trim().slice(0, 40);
       if (!clean) return cb({ ok: false, error: 'Please enter a name.' });
-      const state = rooms.createRoom(socket.id, clean);
+      const state = rooms.createRoom(socket.id, clean, isPublic ?? true);
       socket.join(state.code);
       cb({ ok: true, state, selfId: socket.id });
       if (uid) { presence.setRoom(uid, state.code); pushPresenceToFriends(uid); }
+      broadcastLobby();
     });
 
     socket.on('room:join', ({ code, name }, cb: (r: CreateJoinResult) => void) => {
@@ -153,6 +160,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
         cb({ ok: true, state, selfId: socket.id });
         io.to(upper).emit('room:state', state);
         if (uid) { presence.setRoom(uid, upper); pushPresenceToFriends(uid); }
+        broadcastLobby();
       } catch (e) {
         const msg = (e as Error).message;
         cb({ ok: false, error: msg === 'NAME_TAKEN' ? 'That name is taken in this room.' : 'Room not found.' });
@@ -189,6 +197,28 @@ export function createServer(port = 3001, injectedDb?: DB) {
       io.to(room.code).emit('room:state', updated);
       if (!updated.playback.videoId) advanceAndLog(room.code);
     });
+
+    // Anyone in the room may upvote a queued track; the queue reorders by votes.
+    socket.on('queue:vote', ({ itemId }) => {
+      const room = rooms.getRoomByMember(socket.id);
+      if (!room || typeof itemId !== 'string') return;
+      const updated = rooms.voteQueueItem(room.code, itemId);
+      io.to(room.code).emit('room:state', updated);
+    });
+
+    // Floating reaction emotes, relayed to everyone in the room.
+    socket.on('reaction:send', ({ emoji }) => {
+      const room = rooms.getRoomByMember(socket.id);
+      if (!room) return;
+      if (!(REACTIONS as readonly string[]).includes(emoji)) return;
+      io.to(room.code).emit('reaction:show', { emoji, name: nameOf(socket.id, room.code) });
+    });
+
+    socket.on('lobby:subscribe', () => {
+      socket.join(LOBBY);
+      socket.emit('lobby:rooms', { rooms: rooms.listPublicRooms() });
+    });
+    socket.on('lobby:unsubscribe', () => { socket.leave(LOBBY); });
 
     socket.on('queue:loadPlaylist', (payload) => {
       const parsed = loadPlaylistSchema.safeParse(payload);
@@ -233,6 +263,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
     socket.on('disconnect', () => {
       const res = rooms.leaveRoom(socket.id);
       if (res?.state) io.to(res.code).emit('room:state', res.state);
+      if (res) broadcastLobby();
       if (uid) {
         const { nowOffline } = presence.removeSocket(uid, socket.id);
         if (nowOffline) pushPresenceToFriends(uid);
