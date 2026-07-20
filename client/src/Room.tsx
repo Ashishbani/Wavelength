@@ -44,6 +44,8 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
   offsetRef.current = offset;
 
   const isHost = state.hostId === selfId;
+  const isHostRef = useRef(isHost);
+  isHostRef.current = isHost;
   const { user } = useAuth();
   const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
 
@@ -141,6 +143,21 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
     applyPlayback(playbackRef.current);
   }
 
+  // The player is the source of truth for the DJ. When they play/pause via the
+  // YouTube controls, push it to the server; listeners snap back to the shared
+  // state. Changes that already match the server are our own sync — ignore them.
+  function onPlayerStateChange(playing: boolean, positionSec: number) {
+    if (playing === playbackRef.current.isPlaying) return;
+    if (isHostRef.current) {
+      if (playing) socket.emit('playback:play', { positionSec });
+      else socket.emit('playback:pause', { positionSec });
+    } else {
+      const p = playerRef.current;
+      if (!p) return;
+      if (playbackRef.current.isPlaying) p.play(); else p.pause();
+    }
+  }
+
   // Host-only handlers
   function hostPlay() { socket.emit('playback:play', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
   function hostPause() { socket.emit('playback:pause', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
@@ -191,8 +208,8 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
             <YouTubePlayer
               videoId={state.playback.videoId}
               onReady={onPlayerReady}
-              onEnded={() => { if (isHost) hostNext(); }}
-              onStateChange={() => { /* server is source of truth; ignore local */ }}
+              onEnded={() => { if (isHostRef.current) hostNext(); }}
+              onStateChange={onPlayerStateChange}
             />
           ) : (
             <div className="stage-empty">
