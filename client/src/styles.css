@@ -469,6 +469,14 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .vote:hover { background: var(--grad); color: white; border-color: transparent; }
 .sm-btn { font-size: 13px; padding: 6px 11px; }
 .room-head { flex-wrap: wrap; }
+.me-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 4px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border); font-size: 13px;
+}
+.me-chip .me-name { font-weight: 600; }
+.me-chip .me-name small { color: var(--muted); font-weight: 500; }
+.me-chip .me-role { color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
 .list.scroll { max-height: 420px; overflow-y: auto; }
 
 /* ============================================================

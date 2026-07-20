@@ -61,6 +61,10 @@ export function createServer(port = 3001, injectedDb?: DB) {
   const httpServer = createHttpServer(app);
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
     cors: { origin: CLIENT_ORIGIN, credentials: true },
+    // Detect abrupt disconnects (network drop, tab killed) faster so rooms don't
+    // linger as ghosts in Explore.
+    pingInterval: 10000,
+    pingTimeout: 8000,
   });
   const rooms = new RoomManager();
   const presence = new PresenceRegistry();

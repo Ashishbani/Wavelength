@@ -181,6 +181,8 @@ export default function Room({
     window.setTimeout(() => setCopied(false), 1600);
   }
 
+  const me = state.members.find((m) => m.id === selfId);
+  const myName = me?.name ?? user?.displayName ?? 'You';
   const hasVideo = !!state.playback.videoId;
   const pct = dur > 0 ? Math.min(100, (pos / dur) * 100) : 0;
   const npTitle = title || (hasVideo ? 'Now playing' : 'Nothing playing');
@@ -194,7 +196,11 @@ export default function Room({
         <button className="ghost sm-btn" onClick={copyLink}>{copied ? '✓ Copied' : '🔗 Copy invite link'}</button>
         <span className="role">
           <span className="live-pill"><span className="beat" />IN SYNC</span>
-          {isHost ? '🎧 Host' : '🎶 Member'}
+          <span className="me-chip" title={user ? `Signed in as ${user.displayName}` : 'Guest'}>
+            <span className="avatar sm" style={{ background: avatarColor(myName) }}>{initials(myName)}</span>
+            <span className="me-name">{myName}{user?.username ? <small> @{user.username}</small> : null}</span>
+            <span className="me-role">{isHost ? '🎧 host' : 'member'}</span>
+          </span>
           <button className="ghost sm-btn" onClick={onLeave}>Leave</button>
         </span>
       </header>
