@@ -212,8 +212,12 @@ export function createServer(port = 3001, injectedDb?: DB) {
     socket.on('playback:seek', ({ positionSec }) =>
       memberAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { positionSec }, Date.now()))),
     );
+    // Heartbeat keeps the server's position anchor fresh (so late joiners land at
+    // the right spot) but does NOT broadcast — otherwise every member re-seeks on
+    // each beat, which shows up as repeated rewinding. In-sync members only correct
+    // on real discontinuities (join, play/pause/seek/skip).
     socket.on('playback:heartbeat', ({ positionSec }) =>
-      hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { positionSec }, Date.now()))),
+      hostAction((code) => { rooms.setPlayback(code, { positionSec }, Date.now()); }),
     );
 
     socket.on('queue:next', () => memberAction((code) => advanceAndLog(code)));
