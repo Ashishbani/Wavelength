@@ -1,16 +1,16 @@
-# Aux — Design Spec
+# Wavelength — Design Spec
 
-**Tagline:** *Pass the aux.*
+**Tagline:** *Get on the same wavelength.*
 
 **Date:** 2026-07-20
 **Status:** Draft for review
 
 ## Summary
 
-Aux is a web app where friends join a room and listen to the same YouTube song
-in perfect sync, with a shared queue anyone can contribute to and a live text
-chat. There are no accounts and no database: a visitor enters a display name,
-creates or joins a room by code, and starts listening together. Rooms are
+Wavelength is a web app where friends join a room and listen to the same YouTube
+song in perfect sync, with a shared queue anyone can contribute to and a live
+text chat. There are no accounts and no database: a visitor enters a display
+name, creates or joins a room by code, and starts listening together. Rooms are
 ephemeral and live in server memory.
 
 This spec covers **version 1 only**. Later phases (Spotify, local files,
@@ -46,7 +46,7 @@ their own spec → plan → implementation cycles.
 ## Architecture
 
 ```
-aux-party/
+wavelength/
   server/   Express + Socket.IO, room manager, sync logic
   client/   React + Vite, room UI, YouTube player wrapper
   docs/     this spec
