@@ -319,6 +319,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .np-meta { min-width: 0; }
 .np-title { font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .np-sub { color: var(--muted); font-size: 13px; }
+.np-status { display: flex; align-items: center; gap: 8px; margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 1; }
+.np-status .np-eq { height: 13px; width: 18px; }
 
 /* progress bar */
 .progress { display: flex; align-items: center; gap: 10px; }
@@ -333,14 +335,17 @@ button.link:hover { background: none; filter: brightness(1.2); }
 /* transport */
 .transport { display: flex; align-items: center; gap: 12px; }
 .transport .spacer { flex: 1; }
+.transport-main { display: flex; align-items: center; gap: 14px; }
 .play-btn {
-  width: 56px; height: 56px; border-radius: 50%; border: none;
-  background: var(--grad); color: white; font-size: 20px;
+  width: 54px; height: 54px; border-radius: 50%; border: none;
+  background: var(--grad); color: white;
   display: grid; place-items: center;
   box-shadow: 0 10px 28px rgba(139, 92, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   animation: glow 3s ease-in-out infinite;
 }
 .play-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+.transport-main .round-btn, .play-btn { flex-shrink: 0; padding: 0; }
+.transport-main svg, .play-btn svg { display: block; }
 @keyframes glow {
   0%, 100% { box-shadow: 0 10px 28px rgba(139, 92, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
   50% { box-shadow: 0 12px 34px rgba(255, 92, 168, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3); }

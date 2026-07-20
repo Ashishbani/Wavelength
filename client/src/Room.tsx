@@ -10,6 +10,7 @@ import { apiGet, apiPost } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
 import { ReactionBar, ReactionOverlay } from './room/Reactions.js';
+import { PrevIcon, NextIcon, PlayIcon, PauseIcon } from './room/icons.js';
 import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 
 const AV_COLORS = ['#8b5cff', '#ff5ca8', '#3ddc97', '#ffb14e', '#4ea8ff', '#c65cff'];
@@ -173,6 +174,7 @@ export default function Room({
   function hostPlay() { socket.emit('playback:play', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
   function hostPause() { socket.emit('playback:pause', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
   function hostNext() { socket.emit('queue:next'); }
+  function restart() { playerRef.current?.seekTo(0); socket.emit('playback:seek', { positionSec: 0 }); }
   function vote(itemId: string) { socket.emit('queue:vote', { itemId }); }
 
   function seek(e: MouseEvent<HTMLDivElement>) {
@@ -256,9 +258,9 @@ export default function Room({
               {cover ? <img className="artwork" src={cover} alt="" /> : <div className="artwork placeholder">🎵</div>}
               <div className="np-meta grow">
                 <div className="np-title">{npTitle}</div>
-                <div className="np-sub" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className={isPlaying ? 'eq playing' : 'eq'} style={{ height: 16, width: 22 }}><span /><span /><span /><span /></span>
-                  {isPlaying ? 'Playing' : hasVideo ? 'Paused' : 'Add a song to begin'}
+                <div className="np-status">
+                  <span className={isPlaying ? 'eq np-eq playing' : 'eq np-eq'}><span /><span /><span /><span /></span>
+                  <span>{isPlaying ? 'Playing' : hasVideo ? 'Paused' : 'Add a song to begin'}</span>
                 </div>
               </div>
             </div>
@@ -270,8 +272,11 @@ export default function Room({
             </div>
 
             <div className="transport" style={{ marginTop: 14 }}>
-              <button className="play-btn" onClick={isPlaying ? hostPause : hostPlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
-              <button className="round-btn" onClick={hostNext} title="Skip">⏭</button>
+              <div className="transport-main">
+                <button className="round-btn" onClick={restart} title="Restart track"><PrevIcon /></button>
+                <button className="play-btn" onClick={isPlaying ? hostPause : hostPlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+                <button className="round-btn" onClick={hostNext} title="Next track"><NextIcon /></button>
+              </div>
               <span className="spacer" />
               {user && <button className="ghost" onClick={saveQueueAsPlaylist}>Save queue</button>}
               {user && playlists.length > 0 && (
