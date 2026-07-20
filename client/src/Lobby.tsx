@@ -6,6 +6,7 @@ import AccountPanel from './AccountPanel.js';
 import FriendsPanel from './friends/FriendsPanel.js';
 import Toasts from './friends/Toasts.js';
 import { useLobbyRooms } from './lib/useLobbyRooms.js';
+import { clientSessionId } from './lib/session.js';
 
 export default function Lobby({
   onJoined,
@@ -33,18 +34,18 @@ export default function Lobby({
   function create() {
     if (!name.trim()) return setError('Enter a name first.');
     setBusy(true); setError(''); remember();
-    socket.emit('room:create', { name: name.trim(), isPublic }, handle);
+    socket.emit('room:create', { name: name.trim(), isPublic, clientId: clientSessionId() }, handle);
   }
   function join() {
     if (!name.trim()) return setError('Enter a name first.');
     if (!code.trim()) return setError('Enter a room code.');
     setBusy(true); setError(''); remember();
-    socket.emit('room:join', { code: code.trim(), name: name.trim() }, handle);
+    socket.emit('room:join', { code: code.trim(), name: name.trim(), clientId: clientSessionId() }, handle);
   }
   function joinByCode(roomCode: string) {
     if (!name.trim()) { setError('Enter a name first, then open the room.'); return; }
     setBusy(true); setError(''); remember();
-    socket.emit('room:join', { code: roomCode, name: name.trim() }, handle);
+    socket.emit('room:join', { code: roomCode, name: name.trim(), clientId: clientSessionId() }, handle);
   }
 
   const initials = (user?.displayName ?? 'G').slice(0, 2).toUpperCase();

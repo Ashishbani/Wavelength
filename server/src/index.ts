@@ -156,26 +156,29 @@ export function createServer(port = 3001, injectedDb?: DB) {
 
     socket.on('whoami', (cb) => cb({ userId: (socket.data as { userId?: string }).userId ?? null }));
 
-    socket.on('room:create', ({ name, isPublic }, cb: (r: CreateJoinResult) => void) => {
+    socket.on('room:create', ({ name, isPublic, clientId }, cb: (r: CreateJoinResult) => void) => {
       const clean = (name ?? '').trim().slice(0, 40);
       if (!clean) return cb({ ok: false, error: 'Please enter a name.' });
-      const state = rooms.createRoom(socket.id, clean, isPublic ?? true, uid);
+      const seat = uid ?? clientId;
+      const state = rooms.createRoom(socket.id, clean, isPublic ?? true, seat);
       socket.join(state.code);
       cb({ ok: true, state, selfId: socket.id });
       if (uid) { presence.setRoom(uid, state.code); pushPresenceToFriends(uid); }
       broadcastLobby();
     });
 
-    socket.on('room:join', ({ code, name }, cb: (r: CreateJoinResult) => void) => {
+    socket.on('room:join', ({ code, name, clientId }, cb: (r: CreateJoinResult) => void) => {
       const clean = (name ?? '').trim().slice(0, 40);
       const upper = (code ?? '').trim().toUpperCase();
       if (!clean) return cb({ ok: false, error: 'Please enter a name.' });
+      // Seat = account id if signed in, else a per-tab guest session id.
+      const seat = uid ?? clientId;
       try {
-        // One seat per account: if this account already holds a seat in the room
-        // (another tab / device), evict it and let this tab take over.
+        // One seat per account/session: if this seat already holds a spot in the
+        // room (a duplicated tab / another device), evict it and take over.
         let reclaimHost = false;
-        if (uid) {
-          const prior = rooms.memberByUserId(upper, uid);
+        if (seat) {
+          const prior = rooms.memberBySeat(upper, seat);
           if (prior && prior.id !== socket.id) {
             reclaimHost = rooms.isHost(upper, prior.id);
             rooms.leaveRoom(prior.id);
@@ -186,9 +189,9 @@ export function createServer(port = 3001, injectedDb?: DB) {
         let state;
         if (!rooms.getRoom(upper) && roomRepo.findByCode(upper)) {
           // Reactivate a saved room that has no live instance.
-          state = rooms.createRoomWithCode(upper, socket.id, clean, true, uid);
+          state = rooms.createRoomWithCode(upper, socket.id, clean, true, seat);
         } else {
-          state = rooms.joinRoom(upper, socket.id, clean, uid);
+          state = rooms.joinRoom(upper, socket.id, clean, seat);
         }
         if (reclaimHost) { rooms.setHost(upper, socket.id); state = rooms.getRoom(upper) ?? state; }
         cancelDeletion(upper);

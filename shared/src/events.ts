@@ -1,8 +1,9 @@
 export interface Member {
   id: string;
   name: string;
-  /** Account id when the member is signed in (used to enforce one seat per account). */
-  userId?: string;
+  /** Dedup key: account id if signed in, else a per-tab guest session id.
+      Used to enforce one seat per account/session (take over duplicate tabs). */
+  seat?: string;
 }
 
 export interface QueueItem {
@@ -54,8 +55,8 @@ export type CreateJoinResult =
   | { ok: false; error: string };
 
 export interface ClientToServerEvents {
-  'room:create': (payload: { name: string; isPublic?: boolean }, cb: (res: CreateJoinResult) => void) => void;
-  'room:join': (payload: { code: string; name: string }, cb: (res: CreateJoinResult) => void) => void;
+  'room:create': (payload: { name: string; isPublic?: boolean; clientId?: string }, cb: (res: CreateJoinResult) => void) => void;
+  'room:join': (payload: { code: string; name: string; clientId?: string }, cb: (res: CreateJoinResult) => void) => void;
   'room:leave': () => void;
   'playback:play': (payload: { positionSec: number }) => void;
   'playback:pause': (payload: { positionSec: number }) => void;

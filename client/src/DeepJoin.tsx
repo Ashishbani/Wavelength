@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CreateJoinResult, RoomState } from '@wavelength/shared';
 import socket from './socket.js';
 import { useAuth } from './auth/AuthContext.js';
+import { clientSessionId } from './lib/session.js';
 
 function rememberedName(displayName?: string): string {
   if (displayName) return displayName;
@@ -31,7 +32,7 @@ export default function DeepJoin({
   function submitJoin(who: string) {
     setBusy(true); setError('');
     try { localStorage.setItem('wl_name', who); } catch { /* private mode */ }
-    socket.emit('room:join', { code, name: who }, (res: CreateJoinResult) => {
+    socket.emit('room:join', { code, name: who, clientId: clientSessionId() }, (res: CreateJoinResult) => {
       setBusy(false);
       setRejoining(false);
       if (res.ok) onJoined(res.state, res.selfId);

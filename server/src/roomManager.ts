@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { RoomState, PlaybackState, QueueItem, PublicRoomInfo, Member } from '@wavelength/shared';
 
-function makeMember(id: string, name: string, userId?: string): Member {
-  return userId ? { id, name, userId } : { id, name };
+function makeMember(id: string, name: string, seat?: string): Member {
+  return seat ? { id, name, seat } : { id, name };
 }
 
 function defaultGenCode(): string {
@@ -21,13 +21,13 @@ export class RoomManager {
 
   constructor(private genCode: () => string = defaultGenCode) {}
 
-  createRoom(hostId: string, hostName: string, isPublic = true, userId?: string): RoomState {
+  createRoom(hostId: string, hostName: string, isPublic = true, seat?: string): RoomState {
     let code = this.genCode();
     while (this.rooms.has(code)) code = this.genCode();
     const state: RoomState = {
       code,
       hostId,
-      members: [makeMember(hostId, hostName, userId)],
+      members: [makeMember(hostId, hostName, seat)],
       queue: [],
       playback: emptyPlayback(),
       isPublic,
@@ -36,12 +36,12 @@ export class RoomManager {
     return state;
   }
 
-  createRoomWithCode(code: string, hostId: string, hostName: string, isPublic = true, userId?: string): RoomState {
+  createRoomWithCode(code: string, hostId: string, hostName: string, isPublic = true, seat?: string): RoomState {
     if (this.rooms.has(code)) throw new Error('CODE_IN_USE');
     const state: RoomState = {
       code,
       hostId,
-      members: [makeMember(hostId, hostName, userId)],
+      members: [makeMember(hostId, hostName, seat)],
       queue: [],
       playback: emptyPlayback(),
       isPublic,
@@ -50,7 +50,7 @@ export class RoomManager {
     return state;
   }
 
-  joinRoom(code: string, id: string, name: string, userId?: string): RoomState {
+  joinRoom(code: string, id: string, name: string, seat?: string): RoomState {
     const room = this.rooms.get(code);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     // Never hard-fail on a duplicate name — auto-suffix so joining always works
@@ -60,15 +60,15 @@ export class RoomManager {
     while (room.members.some((m) => m.name.toLowerCase() === finalName.toLowerCase())) {
       finalName = `${name} (${n++})`;
     }
-    room.members.push(makeMember(id, finalName, userId));
+    room.members.push(makeMember(id, finalName, seat));
     // Rejoining an emptied room (or one whose host has left): the joiner hosts.
     if (!room.members.some((m) => m.id === room.hostId)) room.hostId = id;
     return room;
   }
 
-  /** The current member for an account, if present (one seat per account). */
-  memberByUserId(code: string, userId: string): Member | null {
-    return this.rooms.get(code)?.members.find((m) => m.userId === userId) ?? null;
+  /** The current member for a seat (account or guest session), if present. */
+  memberBySeat(code: string, seat: string): Member | null {
+    return this.rooms.get(code)?.members.find((m) => m.seat === seat) ?? null;
   }
 
   setHost(code: string, id: string): void {
