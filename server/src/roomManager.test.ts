@@ -86,4 +86,16 @@ describe('RoomManager', () => {
     expect(mgr.isHost('ROOM0', 'h1')).toBe(true);
     expect(mgr.isHost('ROOM0', 'u2')).toBe(false);
   });
+
+  it('creates a live room with a specific code', () => {
+    const state = mgr.createRoomWithCode('ABC123', 'h1', 'Alice');
+    expect(state.code).toBe('ABC123');
+    expect(state.hostId).toBe('h1');
+    expect(mgr.getRoom('ABC123')?.members).toHaveLength(1);
+  });
+
+  it('throws if the code is already live', () => {
+    mgr.createRoomWithCode('ABC123', 'h1', 'Alice');
+    expect(() => mgr.createRoomWithCode('ABC123', 'h2', 'Bob')).toThrow('CODE_IN_USE');
+  });
 });

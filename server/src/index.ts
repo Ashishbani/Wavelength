@@ -1,5 +1,8 @@
 import { createServer as createHttpServer } from 'node:http';
-import express from 'express';
+import { randomUUID } from 'node:crypto';
+import express, { type Request, type Response, type NextFunction } from 'express';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import { Server } from 'socket.io';
 import type {
   ClientToServerEvents,
@@ -8,26 +11,93 @@ import type {
 } from '@wavelength/shared';
 import { isValidVideoId } from '@wavelength/shared';
 import { RoomManager } from './roomManager.js';
+import { openDb, migrate, type DB } from './db/db.js';
+import { createUserRepo } from './db/userRepo.js';
+import { createRoomRepo } from './db/roomRepo.js';
+import { createPlaylistRepo } from './db/playlistRepo.js';
+import { createHistoryRepo } from './db/historyRepo.js';
+import { createAuthRouter, COOKIE_NAME } from './auth/routes.js';
+import { createRoomRouter } from './api/roomRoutes.js';
+import { createPlaylistRouter } from './api/playlistRoutes.js';
+import { createHistoryRouter } from './api/historyRoutes.js';
+import { verifyToken } from './auth/token.js';
+import { loadPlaylistSchema } from './auth/validators.js';
 
 const MAX_CHAT_LEN = 500;
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 
-export function createServer(port = 3001) {
+export function createServer(port = 3001, injectedDb?: DB) {
+  const db = injectedDb ?? (() => { const d = openDb(); migrate(d); return d; })();
+  const userRepo = createUserRepo(db);
+  const roomRepo = createRoomRepo(db);
+  const playlistRepo = createPlaylistRepo(db);
+  const historyRepo = createHistoryRepo(db);
+  const genCode = () => randomUUID().slice(0, 6).toUpperCase();
+
   const app = express();
+  app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+  app.use(express.json({ limit: '256kb' }));
+  app.use(cookieParser());
+
+  // Populate req.userId from the auth cookie (undefined if absent/invalid).
+  app.use((req: Request & { userId?: string }, _res: Response, next: NextFunction) => {
+    const token = (req.cookies as Record<string, string> | undefined)?.[COOKIE_NAME];
+    req.userId = token ? verifyToken(token)?.userId : undefined;
+    next();
+  });
+
   app.get('/health', (_req, res) => res.json({ ok: true }));
+  app.use('/api/auth', createAuthRouter(userRepo));
+  app.use('/api/rooms', createRoomRouter(roomRepo, genCode));
+  app.use('/api/playlists', createPlaylistRouter(playlistRepo));
+  app.use('/api/history', createHistoryRouter(historyRepo));
 
   const httpServer = createHttpServer(app);
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
-    cors: { origin: '*' },
+    cors: { origin: CLIENT_ORIGIN, credentials: true },
   });
   const rooms = new RoomManager();
+
+  // Identify the socket's user from the same cookie.
+  io.use((socket, next) => {
+    const raw = socket.handshake.headers.cookie ?? '';
+    const match = raw.split(';').map((c) => c.trim()).find((c) => c.startsWith(`${COOKIE_NAME}=`));
+    const token = match ? decodeURIComponent(match.slice(COOKIE_NAME.length + 1)) : '';
+    (socket.data as { userId?: string }).userId = token ? verifyToken(token)?.userId : undefined;
+    next();
+  });
 
   function nameOf(socketId: string, code: string): string {
     const room = rooms.getRoom(code);
     return room?.members.find((m) => m.id === socketId)?.name ?? 'someone';
   }
 
+  // Log a starting track into the history of every authenticated member of the room.
+  function logTrackStart(code: string, videoId: string | null, title: string) {
+    if (!videoId) return;
+    const room = rooms.getRoom(code);
+    if (!room) return;
+    for (const member of room.members) {
+      const memberSocket = io.sockets.sockets.get(member.id);
+      const uid = memberSocket ? (memberSocket.data as { userId?: string }).userId : undefined;
+      if (uid) historyRepo.add(uid, videoId, title);
+    }
+  }
+
+  // Advance to the next queued track, broadcast, and log it to history.
+  function advanceAndLog(code: string) {
+    const upcoming = rooms.getRoom(code)?.queue[0];
+    const pb = rooms.advanceQueue(code, Date.now());
+    io.to(code).emit('playback:update', pb);
+    if (pb.videoId) logTrackStart(code, pb.videoId, upcoming?.title ?? pb.videoId);
+    const room = rooms.getRoom(code);
+    if (room) io.to(code).emit('room:state', room);
+  }
+
   io.on('connection', (socket) => {
     socket.on('time:ping', ({ t0 }, cb) => cb({ t0, serverTime: Date.now() }));
+
+    socket.on('whoami', (cb) => cb({ userId: (socket.data as { userId?: string }).userId ?? null }));
 
     socket.on('room:create', ({ name }, cb: (r: CreateJoinResult) => void) => {
       const clean = (name ?? '').trim().slice(0, 40);
@@ -42,7 +112,13 @@ export function createServer(port = 3001) {
       const upper = (code ?? '').trim().toUpperCase();
       if (!clean) return cb({ ok: false, error: 'Please enter a name.' });
       try {
-        const state = rooms.joinRoom(upper, socket.id, clean);
+        let state;
+        if (!rooms.getRoom(upper) && roomRepo.findByCode(upper)) {
+          // Reactivate a saved room that has no live instance.
+          state = rooms.createRoomWithCode(upper, socket.id, clean);
+        } else {
+          state = rooms.joinRoom(upper, socket.id, clean);
+        }
         socket.join(upper);
         cb({ ok: true, state, selfId: socket.id });
         io.to(upper).emit('room:state', state);
@@ -59,61 +135,46 @@ export function createServer(port = 3001) {
     }
 
     socket.on('playback:play', ({ positionSec }) =>
-      hostAction((code) => {
-        const pb = rooms.setPlayback(code, { isPlaying: true, positionSec }, Date.now());
-        io.to(code).emit('playback:update', pb);
-      }),
+      hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { isPlaying: true, positionSec }, Date.now()))),
     );
-
     socket.on('playback:pause', ({ positionSec }) =>
-      hostAction((code) => {
-        const pb = rooms.setPlayback(code, { isPlaying: false, positionSec }, Date.now());
-        io.to(code).emit('playback:update', pb);
-      }),
+      hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { isPlaying: false, positionSec }, Date.now()))),
     );
-
     socket.on('playback:seek', ({ positionSec }) =>
-      hostAction((code) => {
-        const pb = rooms.setPlayback(code, { positionSec }, Date.now());
-        io.to(code).emit('playback:update', pb);
-      }),
+      hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { positionSec }, Date.now()))),
     );
-
-    // heartbeat re-stamps position without forcing a re-seek broadcast type change
     socket.on('playback:heartbeat', ({ positionSec }) =>
-      hostAction((code) => {
-        const pb = rooms.setPlayback(code, { positionSec }, Date.now());
-        io.to(code).emit('playback:update', pb);
-      }),
+      hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { positionSec }, Date.now()))),
     );
 
-    socket.on('queue:next', () =>
-      hostAction((code) => {
-        const pb = rooms.advanceQueue(code, Date.now());
-        io.to(code).emit('playback:update', pb);
-        const room = rooms.getRoom(code);
-        if (room) io.to(code).emit('room:state', room);
-      }),
-    );
+    socket.on('queue:next', () => hostAction((code) => advanceAndLog(code)));
 
     socket.on('queue:add', ({ videoId, title }) => {
       const room = rooms.getRoomByMember(socket.id);
       if (!room) return;
       if (!isValidVideoId(videoId)) return;
       const cleanTitle = (title ?? '').toString().trim().slice(0, 200) || videoId;
-      const updated = rooms.addToQueue(room.code, {
-        videoId,
-        title: cleanTitle,
-        addedBy: nameOf(socket.id, room.code),
-      });
+      const updated = rooms.addToQueue(room.code, { videoId, title: cleanTitle, addedBy: nameOf(socket.id, room.code) });
       io.to(room.code).emit('room:state', updated);
-      // if nothing is playing, auto-start the first added song
-      if (!updated.playback.videoId) {
-        const pb = rooms.advanceQueue(room.code, Date.now());
-        io.to(room.code).emit('playback:update', pb);
-        const after = rooms.getRoom(room.code);
-        if (after) io.to(room.code).emit('room:state', after);
+      if (!updated.playback.videoId) advanceAndLog(room.code);
+    });
+
+    socket.on('queue:loadPlaylist', (payload) => {
+      const parsed = loadPlaylistSchema.safeParse(payload);
+      if (!parsed.success) return;
+      const room = rooms.getRoomByMember(socket.id);
+      if (!room || !rooms.isHost(room.code, socket.id)) return;
+      const userId = (socket.data as { userId?: string }).userId;
+      if (!userId) return;
+      const playlist = playlistRepo.findById(parsed.data.playlistId);
+      if (!playlist || playlist.ownerUserId !== userId) return;
+      const addedBy = nameOf(socket.id, room.code);
+      for (const it of playlist.items) {
+        rooms.addToQueue(room.code, { videoId: it.videoId, title: it.title, addedBy });
       }
+      const updated = rooms.getRoom(room.code);
+      if (updated) io.to(room.code).emit('room:state', updated);
+      if (updated && !updated.playback.videoId) advanceAndLog(room.code);
     });
 
     socket.on('chat:send', ({ text }) => {
@@ -121,11 +182,7 @@ export function createServer(port = 3001) {
       if (!room) return;
       const clean = (text ?? '').toString().trim().slice(0, MAX_CHAT_LEN);
       if (!clean) return;
-      io.to(room.code).emit('chat:message', {
-        name: nameOf(socket.id, room.code),
-        text: clean,
-        ts: Date.now(),
-      });
+      io.to(room.code).emit('chat:message', { name: nameOf(socket.id, room.code), text: clean, ts: Date.now() });
     });
 
     socket.on('disconnect', () => {
@@ -146,7 +203,6 @@ export function createServer(port = 3001) {
   };
 }
 
-// Start when run directly (not imported by a test).
 if (process.argv[1] && process.argv[1].endsWith('index.ts')) {
   const port = Number(process.env.PORT ?? 3001);
   createServer(port);

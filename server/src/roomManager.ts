@@ -28,6 +28,19 @@ export class RoomManager {
     return state;
   }
 
+  createRoomWithCode(code: string, hostId: string, hostName: string): RoomState {
+    if (this.rooms.has(code)) throw new Error('CODE_IN_USE');
+    const state: RoomState = {
+      code,
+      hostId,
+      members: [{ id: hostId, name: hostName }],
+      queue: [],
+      playback: emptyPlayback(),
+    };
+    this.rooms.set(code, state);
+    return state;
+  }
+
   joinRoom(code: string, id: string, name: string): RoomState {
     const room = this.rooms.get(code);
     if (!room) throw new Error('ROOM_NOT_FOUND');

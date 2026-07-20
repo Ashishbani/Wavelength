@@ -24,7 +24,7 @@ describe('userRepo', () => {
     const u = repo.create('a@b.com', 'hash1', 'Alice');
     const byId = repo.findById(u.id);
     expect(byId?.email).toBe('a@b.com');
-    expect((byId as Record<string, unknown>).passwordHash).toBeUndefined();
+    expect((byId as unknown as Record<string, unknown>).passwordHash).toBeUndefined();
   });
 
   it('returns null for unknown lookups', () => {

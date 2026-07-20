@@ -43,8 +43,10 @@ export interface ClientToServerEvents {
   'playback:heartbeat': (payload: { positionSec: number }) => void;
   'queue:add': (payload: { videoId: string; title: string }) => void;
   'queue:next': () => void;
+  'queue:loadPlaylist': (payload: { playlistId: string }) => void;
   'chat:send': (payload: { text: string }) => void;
   'time:ping': (payload: { t0: number }, cb: (res: { t0: number; serverTime: number }) => void) => void;
+  'whoami': (cb: (res: { userId: string | null }) => void) => void;
 }
 
 export interface ServerToClientEvents {
