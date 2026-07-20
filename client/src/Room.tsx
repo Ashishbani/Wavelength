@@ -10,6 +10,7 @@ import { apiGet, apiPost } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
 import { ReactionBar, ReactionOverlay } from './room/Reactions.js';
+import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 
 const AV_COLORS = ['#8b5cff', '#ff5ca8', '#3ddc97', '#ffb14e', '#4ea8ff', '#c65cff'];
 function avatarColor(s: string): string {
@@ -70,7 +71,7 @@ export default function Room({
     const name = window.prompt('Playlist name?');
     if (!name) return;
     const items = state.queue.map((q) => ({ videoId: q.videoId, title: q.title }));
-    if (state.playback.videoId) items.unshift({ videoId: state.playback.videoId, title: state.playback.videoId });
+    if (state.playback.videoId) items.unshift({ videoId: state.playback.videoId, title: title || state.playback.videoId });
     await apiPost('/api/playlists', { name, items });
     const r = await apiGet<{ playlists: { id: string; name: string }[] }>('/api/playlists');
     setPlaylists(r.playlists);
@@ -183,11 +184,12 @@ export default function Room({
     socket.emit('playback:seek', { positionSec: target });
   }
 
-  function addSong() {
+  async function addSong() {
     const id = parseVideoId(urlInput.trim());
     if (!isValidVideoId(id)) { setUrlInput(''); return; }
-    socket.emit('queue:add', { videoId: id, title: id });
     setUrlInput('');
+    const title = (await fetchYouTubeTitle(id)) ?? id;
+    socket.emit('queue:add', { videoId: id, title });
   }
   function sendChat() {
     const t = chatText.trim();
