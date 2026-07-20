@@ -42,22 +42,34 @@ export default function Landing({ onJoined }: { onJoined: (s: RoomState, selfId:
   return (
     <div className="landing">
       <Toasts onJoin={joinByCode} />
-      <h1>Wavelength</h1>
-      <p className="tagline">Get on the same wavelength.</p>
+
+      <div className="brand">
+        <div className="logo-row">
+          <div className="logo-eq"><span /><span /><span /><span /></div>
+          <h1 className="wordmark">Wavelength</h1>
+        </div>
+        <p className="tagline">Listen together, in perfect sync. Get on the same wavelength.</p>
+      </div>
+
       <AuthPanel />
-      <label>Your name<br />
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="e.g. Alex" />
-      </label>
-      <div className="actions">
-        <button onClick={create} disabled={busy}>Create a room</button>
+
+      <div className="card panel">
+        <label>Your name
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="e.g. Alex" />
+        </label>
+        <div className="actions">
+          <button className="primary" onClick={create} disabled={busy}>Create a room</button>
+        </div>
+        <div className="divider">or join with a code</div>
+        <div className="join-row">
+          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ROOM CODE" maxLength={6} />
+          <button onClick={join} disabled={busy}>Join</button>
+        </div>
+        {error && <p className="error">{error}</p>}
       </div>
-      <div className="join-row">
-        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ROOM CODE" maxLength={6} />
-        <button onClick={join} disabled={busy}>Join</button>
-      </div>
+
       {user && <AccountPanel onJoin={joinByCode} />}
       {user && <FriendsPanel onJoin={joinByCode} />}
-      {error && <p className="error">{error}</p>}
     </div>
   );
 }

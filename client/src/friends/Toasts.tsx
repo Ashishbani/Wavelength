@@ -30,9 +30,9 @@ export default function Toasts({ onJoin }: { onJoin: (code: string) => void }) {
     <div className="toasts">
       {toasts.map((t) => (
         <div key={t.id} className="toast">
-          <span>{t.text}</span>
-          {t.kind === 'invite' && <button onClick={() => { onJoin(t.code); dismiss(t.id); }}>Join</button>}
-          <button onClick={() => dismiss(t.id)}>✕</button>
+          <span className="grow">{t.text}</span>
+          {t.kind === 'invite' && <button className="chip join" onClick={() => { onJoin(t.code); dismiss(t.id); }}>Join</button>}
+          <button className="iconbtn" onClick={() => dismiss(t.id)}>✕</button>
         </div>
       ))}
     </div>

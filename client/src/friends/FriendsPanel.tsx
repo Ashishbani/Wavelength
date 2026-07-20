@@ -27,11 +27,11 @@ export default function FriendsPanel({ onJoin }: { onJoin: (code: string) => voi
 
   if (!user.username) {
     return (
-      <div className="panel friends">
+      <div className="card panel friends">
         <h3>Pick a handle to use friends</h3>
-        <div className="add-song">
+        <div className="inline-add">
           <input placeholder="@handle (3–20)" value={handle} onChange={(e) => setHandle(e.target.value)} maxLength={20} />
-          <button onClick={async () => {
+          <button className="primary" onClick={async () => {
             setError('');
             try { await setUsername(handle); } catch (e) { setError(e instanceof ApiError ? e.message : 'Failed'); }
           }}>Save</button>
@@ -48,40 +48,41 @@ export default function FriendsPanel({ onJoin }: { onJoin: (code: string) => voi
   }
 
   return (
-    <div className="panel friends">
-      <h3>Friends <small>(you are @{user.username})</small></h3>
-      <div className="add-song">
+    <div className="card panel friends">
+      <h3>Friends <small>· you are @{user.username}</small></h3>
+      <div className="inline-add">
         <input placeholder="Add by @handle" value={addName} onChange={(e) => setAddName(e.target.value)} maxLength={21} />
-        <button onClick={add}>Send request</button>
+        <button className="primary" onClick={add}>Add</button>
       </div>
       {error && <p className="error">{error}</p>}
 
       {incoming.length > 0 && (
         <>
           <h4>Requests</h4>
-          <ul>{incoming.map((r) => (
-            <li key={r.id}>
-              @{r.username} ({r.displayName})
-              <span>
-                <button onClick={async () => { await acceptRequest(r.id); await refreshAll(); }}>Accept</button>
-                <button onClick={async () => { await declineRequest(r.id); await refreshAll(); }}>Decline</button>
-              </span>
+          <ul className="list">{incoming.map((r) => (
+            <li key={r.id} className="row">
+              <span className="avatar sm" style={{ background: '#4ea8ff' }}>{(r.username ?? '?').slice(0, 2).toUpperCase()}</span>
+              <span className="grow">@{r.username}</span>
+              <button className="chip join" onClick={async () => { await acceptRequest(r.id); await refreshAll(); }}>Accept</button>
+              <button className="iconbtn" onClick={async () => { await declineRequest(r.id); await refreshAll(); }}>✕</button>
             </li>
           ))}</ul>
         </>
       )}
 
       <h4>Your friends</h4>
-      <ul>{friends.map((f) => {
+      <ul className="list">{friends.map((f) => {
         const p = presence.get(f.userId);
         return (
-          <li key={f.userId}>
-            <span className={p?.online ? 'dot on' : 'dot'} /> @{f.username}
-            {p?.roomCode && <button onClick={() => onJoin(p.roomCode!)}>Join room</button>}
-            <button onClick={async () => { await unfriend(f.userId); await refreshAll(); }}>✕</button>
+          <li key={f.userId} className="row">
+            <span className={p?.online ? 'dot on' : 'dot'} />
+            <span className="grow">@{f.username}{p?.roomCode ? <small> · in a room</small> : p?.online ? <small> · online</small> : ''}</span>
+            {p?.roomCode && <button className="chip join" onClick={() => onJoin(p.roomCode!)}>Join</button>}
+            <button className="iconbtn" onClick={async () => { await unfriend(f.userId); await refreshAll(); }}>✕</button>
           </li>
         );
       })}</ul>
+      {friends.length === 0 && <p className="muted">No friends yet — add someone by their @handle.</p>}
 
       {outgoing.length > 0 && <p className="muted">Pending: {outgoing.map((o) => `@${o.username}`).join(', ')}</p>}
     </div>

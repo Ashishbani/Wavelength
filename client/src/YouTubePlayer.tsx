@@ -6,6 +6,8 @@ export type YTPlayerHandle = {
   pause(): void;
   seekTo(sec: number): void;
   getCurrentTime(): number;
+  getDuration(): number;
+  getTitle(): string;
   loadVideo(id: string): void;
 };
 
@@ -37,6 +39,11 @@ export default function YouTubePlayer({ videoId, onReady, onEnded, onStateChange
               pause: () => p.pauseVideo(),
               seekTo: (sec) => p.seekTo(sec, true),
               getCurrentTime: () => p.getCurrentTime(),
+              getDuration: () => p.getDuration(),
+              getTitle: () => {
+                const data = (p as unknown as { getVideoData?: () => { title?: string } }).getVideoData?.();
+                return data?.title ?? '';
+              },
               loadVideo: (id) => p.loadVideoById(id),
             });
           },
@@ -53,5 +60,5 @@ export default function YouTubePlayer({ videoId, onReady, onEnded, onStateChange
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <div className="player"><div ref={hostRef} /></div>;
+  return <div className="player-wrap"><div ref={hostRef} /></div>;
 }

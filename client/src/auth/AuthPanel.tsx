@@ -13,9 +13,12 @@ export default function AuthPanel() {
 
   if (user) {
     return (
-      <div className="auth-panel">
-        <span>Signed in as <b>{user.displayName}</b></span>
-        <button onClick={() => logout()}>Log out</button>
+      <div className="card auth-panel signed">
+        <span className="row" style={{ background: 'transparent', padding: 0, gap: 10 }}>
+          <span className="avatar sm" style={{ background: '#8b5cff' }}>{user.displayName.slice(0, 2).toUpperCase()}</span>
+          <span>Signed in as <b>{user.displayName}</b>{user.username ? <small> @{user.username}</small> : null}</span>
+        </span>
+        <button className="ghost" onClick={() => logout()}>Log out</button>
       </div>
     );
   }
@@ -33,7 +36,7 @@ export default function AuthPanel() {
   }
 
   return (
-    <div className="auth-panel">
+    <div className="card auth-panel">
       <div className="auth-tabs">
         <button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Log in</button>
         <button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>Sign up</button>
@@ -43,7 +46,7 @@ export default function AuthPanel() {
       )}
       <input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      <button onClick={submit} disabled={busy}>{mode === 'login' ? 'Log in' : 'Create account'}</button>
+      <button className="primary" onClick={submit} disabled={busy}>{mode === 'login' ? 'Log in' : 'Create account'}</button>
       {error && <p className="error">{error}</p>}
     </div>
   );

@@ -35,28 +35,36 @@ export default function AccountPanel({ onJoin }: { onJoin: (code: string) => voi
 
   return (
     <div className="account">
-      <div className="panel">
+      <div className="card panel">
         <h3>Your saved rooms</h3>
-        <div className="add-song">
+        <div className="inline-add">
           <input placeholder="New room name" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} maxLength={60} />
-          <button onClick={createRoom}>Create</button>
+          <button className="primary" onClick={createRoom}>Create</button>
         </div>
-        <ul>{rooms.map((r) => (
-          <li key={r.code}>
-            <button onClick={() => onJoin(r.code)}>{r.name} ({r.code})</button>
-            <button onClick={() => removeRoom(r.code)}>✕</button>
+        <ul className="list">{rooms.map((r) => (
+          <li key={r.code} className="row">
+            <span className="grow click" onClick={() => onJoin(r.code)}>{r.name} <small>· {r.code}</small></span>
+            <button className="chip join" onClick={() => onJoin(r.code)}>Open</button>
+            <button className="iconbtn" onClick={() => removeRoom(r.code)}>✕</button>
           </li>
         ))}</ul>
+        {rooms.length === 0 && <p className="muted">No saved rooms yet.</p>}
       </div>
 
-      <div className="panel">
+      <div className="card panel">
         <h3>Your playlists</h3>
-        <ul>{playlists.map((p) => <li key={p.id}>{p.name} <small>({p.items.length})</small></li>)}</ul>
+        <ul className="list">{playlists.map((p) => (
+          <li key={p.id} className="row"><span className="grow">{p.name}</span><span className="chip">{p.items.length} tracks</span></li>
+        ))}</ul>
+        {playlists.length === 0 && <p className="muted">Save a room's queue to create one.</p>}
       </div>
 
-      <div className="panel">
+      <div className="card panel">
         <h3>Recently played</h3>
-        <ol>{history.slice(0, 20).map((h, i) => <li key={i}>{h.title}</li>)}</ol>
+        <ul className="list">{history.slice(0, 20).map((h, i) => (
+          <li key={i} className="row"><span className="grow">{h.title}</span></li>
+        ))}</ul>
+        {history.length === 0 && <p className="muted">Nothing yet — play some music.</p>}
       </div>
     </div>
   );
