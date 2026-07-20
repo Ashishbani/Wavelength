@@ -32,7 +32,7 @@ export default function YouTubePlayer({ videoId, onReady, onEnded, onStateChange
       if (cancelled || !hostRef.current) return;
       suppressPausedUntil.current = Date.now() + 1500;
       playerRef.current = new YT.Player(hostRef.current, {
-        height: '390',
+        height: '100%',
         width: '100%',
         videoId: videoId ?? undefined,
         playerVars: { autoplay: 0, controls: 1, rel: 0 },

@@ -49,10 +49,14 @@ export class RoomManager {
   joinRoom(code: string, id: string, name: string): RoomState {
     const room = this.rooms.get(code);
     if (!room) throw new Error('ROOM_NOT_FOUND');
-    if (room.members.some((m) => m.name.toLowerCase() === name.toLowerCase())) {
-      throw new Error('NAME_TAKEN');
+    // Never hard-fail on a duplicate name — auto-suffix so joining always works
+    // (e.g. opening your own room from Explore in a second tab).
+    let finalName = name;
+    let n = 2;
+    while (room.members.some((m) => m.name.toLowerCase() === finalName.toLowerCase())) {
+      finalName = `${name} (${n++})`;
     }
-    room.members.push({ id, name });
+    room.members.push({ id, name: finalName });
     return room;
   }
 

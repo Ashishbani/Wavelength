@@ -283,10 +283,14 @@ button.link:hover { background: none; filter: brightness(1.2); }
 
 /* now-playing stage */
 .stage { display: flex; flex-direction: column; gap: 16px; }
-.player-wrap { position: relative; border-radius: var(--radius); overflow: hidden; background: #000; box-shadow: var(--shadow); }
-.player-wrap iframe { display: block; }
+.player-wrap {
+  position: relative; border-radius: var(--radius); overflow: hidden;
+  background: #000; box-shadow: var(--shadow);
+  width: 100%; height: min(52vh, 480px);
+}
+.player-wrap > div, .player-wrap iframe { display: block; width: 100% !important; height: 100% !important; border: 0; }
 .stage-empty {
-  aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center;
+  height: min(42vh, 380px); min-height: 240px; display: grid; place-items: center; text-align: center;
   color: var(--muted); border: 1px dashed var(--border-strong); border-radius: var(--radius);
   background: var(--surface);
 }

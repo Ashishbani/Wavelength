@@ -27,9 +27,10 @@ describe('RoomManager', () => {
     expect(() => mgr.joinRoom('NOPE', 'u2', 'Bob')).toThrow('ROOM_NOT_FOUND');
   });
 
-  it('rejects a duplicate name in the same room', () => {
+  it('auto-suffixes a duplicate name instead of rejecting', () => {
     mgr.createRoom('h1', 'Alice');
-    expect(() => mgr.joinRoom('ROOM0', 'u2', 'Alice')).toThrow('NAME_TAKEN');
+    const state = mgr.joinRoom('ROOM0', 'u2', 'Alice');
+    expect(state.members.map((m) => m.name)).toEqual(['Alice', 'Alice (2)']);
   });
 
   it('promotes the next member to host when the host leaves', () => {
