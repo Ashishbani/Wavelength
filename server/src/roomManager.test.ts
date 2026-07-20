@@ -41,11 +41,21 @@ describe('RoomManager', () => {
     expect(res?.state?.members).toHaveLength(1);
   });
 
-  it('deletes the room when the last member leaves', () => {
+  it('keeps an emptied room until deleteRoom (grace period)', () => {
     mgr.createRoom('h1', 'Alice');
     const res = mgr.leaveRoom('h1');
-    expect(res?.state).toBeNull();
+    expect(res?.empty).toBe(true);
+    expect(mgr.getRoom('ROOM0')).not.toBeNull();
+    mgr.deleteRoom('ROOM0');
     expect(mgr.getRoom('ROOM0')).toBeNull();
+  });
+
+  it('makes the joiner the host when rejoining an emptied room', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.leaveRoom('h1'); // emptied but kept
+    const state = mgr.joinRoom('ROOM0', 'u2', 'Bob');
+    expect(state.hostId).toBe('u2');
+    expect(state.members).toEqual([{ id: 'u2', name: 'Bob' }]);
   });
 
   it('appends to the queue', () => {

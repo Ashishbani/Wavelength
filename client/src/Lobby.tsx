@@ -22,6 +22,9 @@ export default function Lobby({
   const [busy, setBusy] = useState(false);
   const liveRooms = useLobbyRooms();
 
+  function remember() {
+    try { localStorage.setItem('wl_name', name.trim()); } catch { /* private mode */ }
+  }
   function handle(res: CreateJoinResult) {
     setBusy(false);
     if (res.ok) onJoined(res.state, res.selfId);
@@ -29,18 +32,18 @@ export default function Lobby({
   }
   function create() {
     if (!name.trim()) return setError('Enter a name first.');
-    setBusy(true); setError('');
+    setBusy(true); setError(''); remember();
     socket.emit('room:create', { name: name.trim(), isPublic }, handle);
   }
   function join() {
     if (!name.trim()) return setError('Enter a name first.');
     if (!code.trim()) return setError('Enter a room code.');
-    setBusy(true); setError('');
+    setBusy(true); setError(''); remember();
     socket.emit('room:join', { code: code.trim(), name: name.trim() }, handle);
   }
   function joinByCode(roomCode: string) {
     if (!name.trim()) { setError('Enter a name first, then open the room.'); return; }
-    setBusy(true); setError('');
+    setBusy(true); setError(''); remember();
     socket.emit('room:join', { code: roomCode, name: name.trim() }, handle);
   }
 

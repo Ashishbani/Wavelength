@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CreateJoinResult, RoomState } from '@wavelength/shared';
 import socket from './socket.js';
 import { useAuth } from './auth/AuthContext.js';
+
+function rememberedName(displayName?: string): string {
+  if (displayName) return displayName;
+  try { return localStorage.getItem('wl_name') ?? ''; } catch { return ''; }
+}
 
 export default function DeepJoin({
   code,
@@ -13,18 +18,56 @@ export default function DeepJoin({
   onCancel: () => void;
 }) {
   const { user } = useAuth();
-  const [name, setName] = useState(user?.displayName ?? '');
+  const [name, setName] = useState(rememberedName(user?.displayName));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // True while we auto-rejoin after a page refresh (no prompt shown).
+  const [rejoining, setRejoining] = useState(() => {
+    try { return sessionStorage.getItem('wl_room') === code && !!rememberedName(user?.displayName); }
+    catch { return false; }
+  });
+  const tried = useRef(false);
 
-  function join() {
-    if (!name.trim()) return setError('Enter a name to join.');
+  function submitJoin(who: string) {
     setBusy(true); setError('');
-    socket.emit('room:join', { code, name: name.trim() }, (res: CreateJoinResult) => {
+    try { localStorage.setItem('wl_name', who); } catch { /* private mode */ }
+    socket.emit('room:join', { code, name: who }, (res: CreateJoinResult) => {
       setBusy(false);
+      setRejoining(false);
       if (res.ok) onJoined(res.state, res.selfId);
       else setError(res.error);
     });
+  }
+
+  // On a refresh of a room you were in, silently rejoin instead of prompting.
+  useEffect(() => {
+    if (tried.current) return;
+    tried.current = true;
+    let wasHere = false;
+    try { wasHere = sessionStorage.getItem('wl_room') === code; } catch { /* ignore */ }
+    const who = rememberedName(user?.displayName).trim();
+    if (wasHere && who) submitJoin(who);
+    else setRejoining(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function join() {
+    if (!name.trim()) return setError('Enter a name to join.');
+    submitJoin(name.trim());
+  }
+
+  if (rejoining) {
+    return (
+      <div className="landing">
+        <div className="brand">
+          <div className="logo-row">
+            <div className="logo-eq"><span /><span /><span /><span /></div>
+            <h1 className="wordmark">Wavelength</h1>
+          </div>
+          <p className="tagline">Rejoining your room…</p>
+        </div>
+      </div>
+    );
   }
 
   return (

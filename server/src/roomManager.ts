@@ -57,22 +57,26 @@ export class RoomManager {
       finalName = `${name} (${n++})`;
     }
     room.members.push({ id, name: finalName });
+    // Rejoining an emptied room (or one whose host has left): the joiner hosts.
+    if (!room.members.some((m) => m.id === room.hostId)) room.hostId = id;
     return room;
   }
 
-  leaveRoom(id: string): { code: string; state: RoomState | null } | null {
+  // Removes a member. Does NOT delete an emptied room — the caller keeps it for a
+  // short grace period (so a refresh/reconnect can rejoin) and calls deleteRoom.
+  leaveRoom(id: string): { code: string; state: RoomState; empty: boolean } | null {
     for (const room of this.rooms.values()) {
       const idx = room.members.findIndex((m) => m.id === id);
       if (idx === -1) continue;
       room.members.splice(idx, 1);
-      if (room.members.length === 0) {
-        this.rooms.delete(room.code);
-        return { code: room.code, state: null };
-      }
-      if (room.hostId === id) room.hostId = room.members[0].id;
-      return { code: room.code, state: room };
+      if (room.hostId === id && room.members.length > 0) room.hostId = room.members[0].id;
+      return { code: room.code, state: room, empty: room.members.length === 0 };
     }
     return null;
+  }
+
+  deleteRoom(code: string): void {
+    this.rooms.delete(code);
   }
 
   addToQueue(code: string, item: NewQueueItem): RoomState {

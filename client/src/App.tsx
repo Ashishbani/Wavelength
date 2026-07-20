@@ -34,12 +34,14 @@ export default function App() {
     setRoom(state);
     setSelfId(id);
     setDeepCode(null);
+    try { sessionStorage.setItem('wl_room', state.code); } catch { /* private mode */ }
     window.history.pushState({}, '', `/r/${state.code}`);
   }
 
   function leaveRoom() {
     socket.emit('room:leave');
     setRoom(null);
+    try { sessionStorage.removeItem('wl_room'); } catch { /* private mode */ }
     window.history.pushState({}, '', '/');
   }
 

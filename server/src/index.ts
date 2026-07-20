@@ -87,6 +87,24 @@ export function createServer(port = 3001, injectedDb?: DB) {
     io.to(LOBBY).emit('lobby:rooms', { rooms: rooms.listPublicRooms() });
   }
 
+  // Emptied rooms are kept for a short grace period so a refresh/reconnect can
+  // rejoin the same live room (with its queue) instead of finding it gone.
+  const ROOM_GRACE_MS = 20000;
+  const pendingDeletions = new Map<string, ReturnType<typeof setTimeout>>();
+  function cancelDeletion(code: string) {
+    const t = pendingDeletions.get(code);
+    if (t) { clearTimeout(t); pendingDeletions.delete(code); }
+  }
+  function scheduleDeletion(code: string) {
+    cancelDeletion(code);
+    const t = setTimeout(() => {
+      pendingDeletions.delete(code);
+      if (rooms.getRoom(code)?.members.length === 0) { rooms.deleteRoom(code); broadcastLobby(); }
+    }, ROOM_GRACE_MS);
+    t.unref?.();
+    pendingDeletions.set(code, t);
+  }
+
   // Identify the socket's user from the same cookie.
   io.use((socket, next) => {
     const raw = socket.handshake.headers.cookie ?? '';
@@ -160,6 +178,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
         } else {
           state = rooms.joinRoom(upper, socket.id, clean);
         }
+        cancelDeletion(upper);
         socket.join(upper);
         cb({ ok: true, state, selfId: socket.id });
         io.to(upper).emit('room:state', state);
@@ -236,7 +255,8 @@ export function createServer(port = 3001, injectedDb?: DB) {
       const res = rooms.leaveRoom(socket.id);
       if (!res) return;
       socket.leave(res.code);
-      if (res.state) io.to(res.code).emit('room:state', res.state);
+      if (res.empty) scheduleDeletion(res.code);
+      else io.to(res.code).emit('room:state', res.state);
       broadcastLobby();
       if (uid) { presence.setRoom(uid, null); pushPresenceToFriends(uid); }
     });
@@ -283,8 +303,11 @@ export function createServer(port = 3001, injectedDb?: DB) {
 
     socket.on('disconnect', () => {
       const res = rooms.leaveRoom(socket.id);
-      if (res?.state) io.to(res.code).emit('room:state', res.state);
-      if (res) broadcastLobby();
+      if (res) {
+        if (res.empty) scheduleDeletion(res.code);
+        else io.to(res.code).emit('room:state', res.state);
+        broadcastLobby();
+      }
       if (uid) {
         const { nowOffline } = presence.removeSocket(uid, socket.id);
         if (nowOffline) pushPresenceToFriends(uid);
@@ -298,6 +321,8 @@ export function createServer(port = 3001, injectedDb?: DB) {
     httpServer,
     close: () =>
       new Promise<void>((resolve) => {
+        for (const t of pendingDeletions.values()) clearTimeout(t);
+        pendingDeletions.clear();
         io.close();
         httpServer.close(() => resolve());
       }),
