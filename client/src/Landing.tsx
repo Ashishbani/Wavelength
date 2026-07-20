@@ -70,6 +70,15 @@ export default function Landing({ onJoined }: { onJoined: (s: RoomState, selfId:
 
       {user && <AccountPanel onJoin={joinByCode} />}
       {user && <FriendsPanel onJoin={joinByCode} />}
+
+      {!user && (
+        <div className="features">
+          <div className="feat"><span className="ico">🎧</span><b>Synced playback</b><small>Everyone hears the same moment</small></div>
+          <div className="feat"><span className="ico">📃</span><b>Shared queue</b><small>Anyone can line up the next track</small></div>
+          <div className="feat"><span className="ico">💬</span><b>Live chat</b><small>React together in real time</small></div>
+          <div className="feat"><span className="ico">👥</span><b>Friends &amp; presence</b><small>See who's online, hop in</small></div>
+        </div>
+      )}
     </div>
   );
 }

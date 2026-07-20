@@ -172,6 +172,7 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
   const hasVideo = !!state.playback.videoId;
   const pct = dur > 0 ? Math.min(100, (pos / dur) * 100) : 0;
   const npTitle = title || (hasVideo ? 'Now playing' : 'Nothing playing');
+  const cover = state.playback.videoId ? `https://img.youtube.com/vi/${state.playback.videoId}/mqdefault.jpg` : null;
 
   return (
     <div className="room">
@@ -205,12 +206,18 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
             </div>
           )}
 
-          <div className="card panel">
+          <div className="card panel np-card">
+            {cover && <div className="cover-bg" style={{ backgroundImage: `url(${cover})` }} />}
             <div className="nowplaying">
-              <div className={isPlaying ? 'eq playing' : 'eq'}><span /><span /><span /><span /></div>
+              {cover
+                ? <img className="artwork" src={cover} alt="" />
+                : <div className="artwork placeholder">🎵</div>}
               <div className="np-meta grow">
                 <div className="np-title">{npTitle}</div>
-                <div className="np-sub">{isPlaying ? 'Playing' : hasVideo ? 'Paused' : 'Add a song to begin'}</div>
+                <div className="np-sub" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className={isPlaying ? 'eq playing' : 'eq'} style={{ height: 16, width: 22 }}><span /><span /><span /><span /></span>
+                  {isPlaying ? 'Playing' : hasVideo ? 'Paused' : 'Add a song to begin'}
+                </div>
               </div>
             </div>
 
