@@ -2,17 +2,22 @@ import { useState } from 'react';
 import type { CreateJoinResult, RoomState } from '@wavelength/shared';
 import socket from './socket.js';
 import { useAuth } from './auth/AuthContext.js';
-import AuthPanel from './auth/AuthPanel.js';
 import AccountPanel from './AccountPanel.js';
 import FriendsPanel from './friends/FriendsPanel.js';
 import Toasts from './friends/Toasts.js';
 
-export default function Landing({ onJoined }: { onJoined: (s: RoomState, selfId: string) => void }) {
-  const [name, setName] = useState('');
+export default function Lobby({
+  onJoined,
+  onBackToAuth,
+}: {
+  onJoined: (s: RoomState, selfId: string) => void;
+  onBackToAuth: () => void;
+}) {
+  const { user, logout } = useAuth();
+  const [name, setName] = useState(user?.displayName ?? '');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const { user } = useAuth();
 
   function handle(res: CreateJoinResult) {
     setBusy(false);
@@ -34,26 +39,31 @@ export default function Landing({ onJoined }: { onJoined: (s: RoomState, selfId:
   }
 
   function joinByCode(roomCode: string) {
-    if (!name.trim()) { setError('Enter a name first, then open your room.'); return; }
+    if (!name.trim()) { setError('Enter a name first, then open the room.'); return; }
     setBusy(true); setError('');
     socket.emit('room:join', { code: roomCode, name: name.trim() }, handle);
   }
+
+  const initials = (user?.displayName ?? 'G').slice(0, 2).toUpperCase();
 
   return (
     <div className="landing">
       <Toasts onJoin={joinByCode} />
 
-      <div className="brand">
-        <div className="logo-row">
-          <div className="logo-eq"><span /><span /><span /><span /></div>
-          <h1 className="wordmark">Wavelength</h1>
-        </div>
-        <p className="tagline">Listen together, in perfect sync. Get on the same wavelength.</p>
+      <div className="card lobby-bar">
+        <span className="who">
+          <span className="avatar sm" style={{ background: user ? '#8b5cff' : '#4a4a68' }}>{initials}</span>
+          {user
+            ? <span>Signed in as <b>{user.displayName}</b>{user.username ? <small> · @{user.username}</small> : null}</span>
+            : <span>Listening as a <b>guest</b></span>}
+        </span>
+        {user
+          ? <button className="ghost" onClick={() => logout()}>Log out</button>
+          : <button className="ghost" onClick={onBackToAuth}>Log in / Sign up</button>}
       </div>
 
-      <AuthPanel />
-
       <div className="card panel">
+        <h3 style={{ marginBottom: 12 }}>Start listening</h3>
         <label>Your name
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="e.g. Alex" />
         </label>
@@ -72,12 +82,9 @@ export default function Landing({ onJoined }: { onJoined: (s: RoomState, selfId:
       {user && <FriendsPanel onJoin={joinByCode} />}
 
       {!user && (
-        <div className="features">
-          <div className="feat"><span className="ico">🎧</span><b>Synced playback</b><small>Everyone hears the same moment</small></div>
-          <div className="feat"><span className="ico">📃</span><b>Shared queue</b><small>Anyone can line up the next track</small></div>
-          <div className="feat"><span className="ico">💬</span><b>Live chat</b><small>React together in real time</small></div>
-          <div className="feat"><span className="ico">👥</span><b>Friends &amp; presence</b><small>See who's online, hop in</small></div>
-        </div>
+        <p className="muted" style={{ textAlign: 'center' }}>
+          Want saved rooms, playlists, and friends? <button className="link" onClick={onBackToAuth}>Create an account</button>.
+        </p>
       )}
     </div>
   );
