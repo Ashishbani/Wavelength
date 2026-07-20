@@ -1,0 +1,106 @@
+import { randomUUID } from 'node:crypto';
+import type { RoomState, PlaybackState, QueueItem } from '@wavelength/shared';
+
+function defaultGenCode(): string {
+  return randomUUID().slice(0, 6).toUpperCase();
+}
+
+function emptyPlayback(): PlaybackState {
+  return { videoId: null, isPlaying: false, positionSec: 0, lastUpdateServerTs: 0 };
+}
+
+export class RoomManager {
+  private rooms = new Map<string, RoomState>();
+
+  constructor(private genCode: () => string = defaultGenCode) {}
+
+  createRoom(hostId: string, hostName: string): RoomState {
+    let code = this.genCode();
+    while (this.rooms.has(code)) code = this.genCode();
+    const state: RoomState = {
+      code,
+      hostId,
+      members: [{ id: hostId, name: hostName }],
+      queue: [],
+      playback: emptyPlayback(),
+    };
+    this.rooms.set(code, state);
+    return state;
+  }
+
+  joinRoom(code: string, id: string, name: string): RoomState {
+    const room = this.rooms.get(code);
+    if (!room) throw new Error('ROOM_NOT_FOUND');
+    if (room.members.some((m) => m.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error('NAME_TAKEN');
+    }
+    room.members.push({ id, name });
+    return room;
+  }
+
+  leaveRoom(id: string): { code: string; state: RoomState | null } | null {
+    for (const room of this.rooms.values()) {
+      const idx = room.members.findIndex((m) => m.id === id);
+      if (idx === -1) continue;
+      room.members.splice(idx, 1);
+      if (room.members.length === 0) {
+        this.rooms.delete(room.code);
+        return { code: room.code, state: null };
+      }
+      if (room.hostId === id) room.hostId = room.members[0].id;
+      return { code: room.code, state: room };
+    }
+    return null;
+  }
+
+  addToQueue(code: string, item: QueueItem): RoomState {
+    const room = this.requireRoom(code);
+    room.queue.push(item);
+    return room;
+  }
+
+  advanceQueue(code: string, serverTs: number): PlaybackState {
+    const room = this.requireRoom(code);
+    const next = room.queue.shift();
+    room.playback = next
+      ? { videoId: next.videoId, isPlaying: true, positionSec: 0, lastUpdateServerTs: serverTs }
+      : { ...emptyPlayback(), lastUpdateServerTs: serverTs };
+    return room.playback;
+  }
+
+  setPlayback(
+    code: string,
+    patch: { isPlaying?: boolean; positionSec: number },
+    serverTs: number,
+  ): PlaybackState {
+    const room = this.requireRoom(code);
+    room.playback = {
+      ...room.playback,
+      positionSec: patch.positionSec,
+      isPlaying: patch.isPlaying ?? room.playback.isPlaying,
+      lastUpdateServerTs: serverTs,
+    };
+    return room.playback;
+  }
+
+  getRoom(code: string): RoomState | null {
+    return this.rooms.get(code) ?? null;
+  }
+
+  getRoomByMember(id: string): RoomState | null {
+    for (const room of this.rooms.values()) {
+      if (room.members.some((m) => m.id === id)) return room;
+    }
+    return null;
+  }
+
+  isHost(code: string, id: string): boolean {
+    return this.rooms.get(code)?.hostId === id;
+  }
+
+  private requireRoom(code: string): RoomState {
+    const room = this.rooms.get(code);
+    if (!room) throw new Error('ROOM_NOT_FOUND');
+    return room;
+  }
+}

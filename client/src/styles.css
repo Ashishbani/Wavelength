@@ -1,0 +1,38 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #0f1020;
+  color: #e8e8f0;
+}
+.app { max-width: 1100px; margin: 0 auto; padding: 24px; }
+button { cursor: pointer; border-radius: 8px; border: 1px solid #3a3a5a; background: #23234a; color: #e8e8f0; padding: 8px 14px; }
+button:hover { background: #2e2e5e; }
+input { border-radius: 8px; border: 1px solid #3a3a5a; background: #16162e; color: #e8e8f0; padding: 8px 10px; }
+
+/* Landing */
+.landing { max-width: 420px; margin: 10vh auto; text-align: center; }
+.tagline { color: #9a9ac0; margin-top: -8px; }
+.landing label { display: block; text-align: left; margin: 16px 0; }
+.landing input { width: 100%; }
+.actions { margin: 16px 0; }
+.join-row { display: flex; gap: 8px; margin-top: 12px; }
+.join-row input { flex: 1; text-transform: uppercase; }
+.error { color: #ff8080; }
+
+/* Room */
+.room-head { display: flex; align-items: baseline; gap: 16px; }
+.room-head .code { color: #9a9ac0; }
+.room-head .role { margin-left: auto; color: #7ad; }
+.room-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; margin-top: 16px; }
+@media (max-width: 800px) { .room-grid { grid-template-columns: 1fr; } }
+.controls { display: flex; gap: 8px; margin: 12px 0; }
+.add-song { display: flex; gap: 8px; }
+.add-song input { flex: 1; }
+.panel { background: #16162e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+.panel h3 { margin: 0 0 8px; font-size: 14px; color: #b8b8e0; }
+.panel ul, .panel ol { margin: 0; padding-left: 18px; }
+.chat .messages { height: 220px; overflow-y: auto; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.chat-input { display: flex; gap: 6px; margin-top: 8px; }
+.chat-input input { flex: 1; }

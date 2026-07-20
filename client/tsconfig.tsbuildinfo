@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/Landing.tsx","./src/Room.tsx","./src/YouTubePlayer.tsx","./src/main.tsx","./src/parseVideoId.test.ts","./src/parseVideoId.ts","./src/socket.ts","./src/useClockOffset.ts","./src/youtubeApi.ts"],"version":"5.9.3"}
