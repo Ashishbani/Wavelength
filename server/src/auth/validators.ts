@@ -25,3 +25,15 @@ export const createPlaylistSchema = z.object({
 export const loadPlaylistSchema = z.object({
   playlistId: z.string().min(1).max(64),
 });
+
+export const usernameSchema = z.object({
+  username: z.string().trim().min(3).max(20).regex(/^[A-Za-z0-9_]+$/),
+});
+
+export const friendRequestSchema = z.object({
+  username: z.string().trim().min(3).max(20),
+});
+
+export const inviteSchema = z.object({
+  toUserId: z.string().min(1).max(64),
+});

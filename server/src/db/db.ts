@@ -49,5 +49,21 @@ export function migrate(db: DB): void {
       played_at INTEGER NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+    CREATE TABLE IF NOT EXISTS friend_edges (
+      id TEXT PRIMARY KEY,
+      requester_id TEXT NOT NULL,
+      addressee_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      UNIQUE (requester_id, addressee_id),
+      FOREIGN KEY (requester_id) REFERENCES users(id),
+      FOREIGN KEY (addressee_id) REFERENCES users(id)
+    );
   `);
+
+  const cols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'username')) {
+    db.exec('ALTER TABLE users ADD COLUMN username TEXT');
+  }
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)');
 }

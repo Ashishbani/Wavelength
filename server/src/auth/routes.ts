@@ -67,7 +67,7 @@ export function createAuthRouter(userRepo: ReturnType<typeof createUserRepo>): R
     const userId = (req as Request & { userId?: string }).userId;
     if (!userId) return res.json({ user: null });
     const user = userRepo.findById(userId);
-    res.json({ user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null });
+    res.json({ user: user ? { id: user.id, email: user.email, displayName: user.displayName, username: user.username } : null });
   });
 
   return router;

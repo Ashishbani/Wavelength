@@ -10,18 +10,23 @@ import type {
   CreateJoinResult,
 } from '@wavelength/shared';
 import { isValidVideoId } from '@wavelength/shared';
+import type { PresenceInfo } from '@wavelength/shared';
 import { RoomManager } from './roomManager.js';
 import { openDb, migrate, type DB } from './db/db.js';
 import { createUserRepo } from './db/userRepo.js';
 import { createRoomRepo } from './db/roomRepo.js';
 import { createPlaylistRepo } from './db/playlistRepo.js';
 import { createHistoryRepo } from './db/historyRepo.js';
+import { createFriendRepo } from './db/friendRepo.js';
+import { PresenceRegistry } from './presence/presenceRegistry.js';
 import { createAuthRouter, COOKIE_NAME } from './auth/routes.js';
 import { createRoomRouter } from './api/roomRoutes.js';
 import { createPlaylistRouter } from './api/playlistRoutes.js';
 import { createHistoryRouter } from './api/historyRoutes.js';
+import { createAccountRouter } from './api/accountRoutes.js';
+import { createFriendRouter } from './api/friendRoutes.js';
 import { verifyToken } from './auth/token.js';
-import { loadPlaylistSchema } from './auth/validators.js';
+import { loadPlaylistSchema, inviteSchema } from './auth/validators.js';
 
 const MAX_CHAT_LEN = 500;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
@@ -32,6 +37,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
   const roomRepo = createRoomRepo(db);
   const playlistRepo = createPlaylistRepo(db);
   const historyRepo = createHistoryRepo(db);
+  const friendRepo = createFriendRepo(db);
   const genCode = () => randomUUID().slice(0, 6).toUpperCase();
 
   const app = express();
@@ -57,6 +63,20 @@ export function createServer(port = 3001, injectedDb?: DB) {
     cors: { origin: CLIENT_ORIGIN, credentials: true },
   });
   const rooms = new RoomManager();
+  const presence = new PresenceRegistry();
+
+  // Mounted after `io` exists because the request notifier pushes over the socket.
+  app.use('/api/account', createAccountRouter(userRepo));
+  app.use('/api/friends', createFriendRouter(userRepo, friendRepo, (addresseeId, fromUsername, fromDisplayName) => {
+    io.to(`user:${addresseeId}`).emit('friend:requestReceived', { fromUsername, fromDisplayName });
+  }));
+
+  function pushPresenceToFriends(userId: string) {
+    const info: PresenceInfo = { userId, ...presence.getPresence(userId) };
+    for (const fid of friendRepo.friendIds(userId)) {
+      if (presence.isOnline(fid)) io.to(`user:${fid}`).emit('presence:update', info);
+    }
+  }
 
   // Identify the socket's user from the same cookie.
   io.use((socket, next) => {
@@ -95,6 +115,15 @@ export function createServer(port = 3001, injectedDb?: DB) {
   }
 
   io.on('connection', (socket) => {
+    const uid = (socket.data as { userId?: string }).userId;
+    if (uid) {
+      socket.join(`user:${uid}`);
+      presence.addSocket(uid, socket.id);
+      pushPresenceToFriends(uid);
+      const friends = friendRepo.friendIds(uid).map((fid): PresenceInfo => ({ userId: fid, ...presence.getPresence(fid) }));
+      socket.emit('presence:snapshot', { friends });
+    }
+
     socket.on('time:ping', ({ t0 }, cb) => cb({ t0, serverTime: Date.now() }));
 
     socket.on('whoami', (cb) => cb({ userId: (socket.data as { userId?: string }).userId ?? null }));
@@ -105,6 +134,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
       const state = rooms.createRoom(socket.id, clean);
       socket.join(state.code);
       cb({ ok: true, state, selfId: socket.id });
+      if (uid) { presence.setRoom(uid, state.code); pushPresenceToFriends(uid); }
     });
 
     socket.on('room:join', ({ code, name }, cb: (r: CreateJoinResult) => void) => {
@@ -122,6 +152,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
         socket.join(upper);
         cb({ ok: true, state, selfId: socket.id });
         io.to(upper).emit('room:state', state);
+        if (uid) { presence.setRoom(uid, upper); pushPresenceToFriends(uid); }
       } catch (e) {
         const msg = (e as Error).message;
         cb({ ok: false, error: msg === 'NAME_TAKEN' ? 'That name is taken in this room.' : 'Room not found.' });
@@ -185,9 +216,27 @@ export function createServer(port = 3001, injectedDb?: DB) {
       io.to(room.code).emit('chat:message', { name: nameOf(socket.id, room.code), text: clean, ts: Date.now() });
     });
 
+    socket.on('invite:send', (payload) => {
+      const parsed = inviteSchema.safeParse(payload);
+      if (!parsed.success || !uid) return;
+      const room = rooms.getRoomByMember(socket.id);
+      if (!room || !rooms.isHost(room.code, socket.id)) return;
+      if (!friendRepo.areFriends(uid, parsed.data.toUserId)) return;
+      const roomName = roomRepo.findByCode(room.code)?.name ?? null;
+      io.to(`user:${parsed.data.toUserId}`).emit('invite:receive', {
+        fromDisplayName: nameOf(socket.id, room.code),
+        code: room.code,
+        roomName,
+      });
+    });
+
     socket.on('disconnect', () => {
       const res = rooms.leaveRoom(socket.id);
       if (res?.state) io.to(res.code).emit('room:state', res.state);
+      if (uid) {
+        const { nowOffline } = presence.removeSocket(uid, socket.id);
+        if (nowOffline) pushPresenceToFriends(uid);
+      }
     });
   });
 

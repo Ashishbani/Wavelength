@@ -36,4 +36,18 @@ describe('userRepo', () => {
     repo.create('a@b.com', 'h', 'Alice');
     expect(() => repo.create('a@b.com', 'h2', 'Bob')).toThrow('EMAIL_TAKEN');
   });
+
+  it('sets and finds a user by username (case-insensitive)', () => {
+    const u = repo.create('a@b.com', 'h', 'Alice');
+    repo.setUsername(u.id, 'AliceCat');
+    expect(repo.findByUsername('alicecat')?.id).toBe(u.id);
+    expect(repo.findById(u.id)?.username).toBe('alicecat');
+  });
+
+  it('rejects a duplicate username', () => {
+    const a = repo.create('a@b.com', 'h', 'Alice');
+    const b = repo.create('b@b.com', 'h', 'Bob');
+    repo.setUsername(a.id, 'dj');
+    expect(() => repo.setUsername(b.id, 'DJ')).toThrow('USERNAME_TAKEN');
+  });
 });

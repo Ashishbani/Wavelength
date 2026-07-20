@@ -30,6 +30,12 @@ export interface ChatMessage {
   ts: number;
 }
 
+export interface PresenceInfo {
+  userId: string;
+  online: boolean;
+  roomCode: string | null;
+}
+
 export type CreateJoinResult =
   | { ok: true; state: RoomState; selfId: string }
   | { ok: false; error: string };
@@ -47,10 +53,15 @@ export interface ClientToServerEvents {
   'chat:send': (payload: { text: string }) => void;
   'time:ping': (payload: { t0: number }, cb: (res: { t0: number; serverTime: number }) => void) => void;
   'whoami': (cb: (res: { userId: string | null }) => void) => void;
+  'invite:send': (payload: { toUserId: string }) => void;
 }
 
 export interface ServerToClientEvents {
   'room:state': (state: RoomState) => void;
   'playback:update': (playback: PlaybackState) => void;
   'chat:message': (msg: ChatMessage) => void;
+  'presence:snapshot': (payload: { friends: PresenceInfo[] }) => void;
+  'presence:update': (payload: PresenceInfo) => void;
+  'friend:requestReceived': (payload: { fromUsername: string; fromDisplayName: string }) => void;
+  'invite:receive': (payload: { fromDisplayName: string; code: string; roomName: string | null }) => void;
 }
