@@ -1,6 +1,8 @@
 export interface Member {
   id: string;
   name: string;
+  /** Account id when the member is signed in (used to enforce one seat per account). */
+  userId?: string;
 }
 
 export interface QueueItem {
@@ -76,6 +78,7 @@ export interface ServerToClientEvents {
   'playback:update': (playback: PlaybackState) => void;
   'playback:sync': (playback: PlaybackState) => void;
   'chat:message': (msg: ChatMessage) => void;
+  'session:superseded': () => void;
   'lobby:rooms': (payload: { rooms: PublicRoomInfo[] }) => void;
   'presence:snapshot': (payload: { friends: PresenceInfo[] }) => void;
   'presence:update': (payload: PresenceInfo) => void;

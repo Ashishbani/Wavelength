@@ -18,6 +18,7 @@ export default function App() {
   const [selfId, setSelfId] = useState<string>('');
   const [enteredAsGuest, setEnteredAsGuest] = useState(false);
   const [deepCode, setDeepCode] = useState<string | null>(codeFromPath());
+  const [notice, setNotice] = useState('');
 
   // Keep view in sync with browser Back/Forward.
   useEffect(() => {
@@ -30,10 +31,24 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, [room]);
 
+  // The server evicts a prior session when this account opens the room elsewhere.
+  useEffect(() => {
+    function onSuperseded() {
+      setRoom(null);
+      setDeepCode(null);
+      try { sessionStorage.removeItem('wl_room'); } catch { /* private mode */ }
+      window.history.pushState({}, '', '/');
+      setNotice('This room was opened in another tab, so this tab left it.');
+    }
+    socket.on('session:superseded', onSuperseded);
+    return () => { socket.off('session:superseded', onSuperseded); };
+  }, []);
+
   function enterRoom(state: RoomState, id: string) {
     setRoom(state);
     setSelfId(id);
     setDeepCode(null);
+    setNotice('');
     try { sessionStorage.setItem('wl_room', state.code); } catch { /* private mode */ }
     window.history.pushState({}, '', `/r/${state.code}`);
   }
@@ -45,33 +60,34 @@ export default function App() {
     window.history.pushState({}, '', '/');
   }
 
+  let view;
   if (room) {
-    return <div className="app app-wide"><Room initialState={room} selfId={selfId} onLeave={leaveRoom} /></div>;
-  }
-  if (loading) {
-    return <div className="app"><div className="splash">Loading Wavelength…</div></div>;
-  }
-  if (deepCode) {
-    return (
-      <div className="app">
-        <DeepJoin
-          code={deepCode}
-          onJoined={enterRoom}
-          onCancel={() => { setDeepCode(null); window.history.pushState({}, '', '/'); }}
-        />
-      </div>
+    view = <Room initialState={room} selfId={selfId} onLeave={leaveRoom} />;
+  } else if (loading) {
+    view = <div className="splash">Loading Wavelength…</div>;
+  } else if (deepCode) {
+    view = (
+      <DeepJoin
+        code={deepCode}
+        onJoined={enterRoom}
+        onCancel={() => { setDeepCode(null); window.history.pushState({}, '', '/'); }}
+      />
     );
+  } else if (user || enteredAsGuest) {
+    view = <Lobby onJoined={enterRoom} onBackToAuth={() => setEnteredAsGuest(false)} />;
+  } else {
+    view = <Auth onGuest={() => setEnteredAsGuest(true)} />;
   }
-  if (user || enteredAsGuest) {
-    return (
-      <div className="app">
-        <Lobby onJoined={enterRoom} onBackToAuth={() => setEnteredAsGuest(false)} />
-      </div>
-    );
-  }
+
   return (
-    <div className="app">
-      <Auth onGuest={() => setEnteredAsGuest(true)} />
+    <div className={room ? 'app app-wide' : 'app'}>
+      {notice && (
+        <div className="notice">
+          <span className="grow">{notice}</span>
+          <button className="iconbtn" onClick={() => setNotice('')}>✕</button>
+        </div>
+      )}
+      {view}
     </div>
   );
 }

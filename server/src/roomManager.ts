@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { RoomState, PlaybackState, QueueItem, PublicRoomInfo } from '@wavelength/shared';
+import type { RoomState, PlaybackState, QueueItem, PublicRoomInfo, Member } from '@wavelength/shared';
+
+function makeMember(id: string, name: string, userId?: string): Member {
+  return userId ? { id, name, userId } : { id, name };
+}
 
 function defaultGenCode(): string {
   return randomUUID().slice(0, 6).toUpperCase();
@@ -17,13 +21,13 @@ export class RoomManager {
 
   constructor(private genCode: () => string = defaultGenCode) {}
 
-  createRoom(hostId: string, hostName: string, isPublic = true): RoomState {
+  createRoom(hostId: string, hostName: string, isPublic = true, userId?: string): RoomState {
     let code = this.genCode();
     while (this.rooms.has(code)) code = this.genCode();
     const state: RoomState = {
       code,
       hostId,
-      members: [{ id: hostId, name: hostName }],
+      members: [makeMember(hostId, hostName, userId)],
       queue: [],
       playback: emptyPlayback(),
       isPublic,
@@ -32,12 +36,12 @@ export class RoomManager {
     return state;
   }
 
-  createRoomWithCode(code: string, hostId: string, hostName: string, isPublic = true): RoomState {
+  createRoomWithCode(code: string, hostId: string, hostName: string, isPublic = true, userId?: string): RoomState {
     if (this.rooms.has(code)) throw new Error('CODE_IN_USE');
     const state: RoomState = {
       code,
       hostId,
-      members: [{ id: hostId, name: hostName }],
+      members: [makeMember(hostId, hostName, userId)],
       queue: [],
       playback: emptyPlayback(),
       isPublic,
@@ -46,20 +50,30 @@ export class RoomManager {
     return state;
   }
 
-  joinRoom(code: string, id: string, name: string): RoomState {
+  joinRoom(code: string, id: string, name: string, userId?: string): RoomState {
     const room = this.rooms.get(code);
     if (!room) throw new Error('ROOM_NOT_FOUND');
     // Never hard-fail on a duplicate name — auto-suffix so joining always works
-    // (e.g. opening your own room from Explore in a second tab).
+    // (e.g. two different guests using the same name).
     let finalName = name;
     let n = 2;
     while (room.members.some((m) => m.name.toLowerCase() === finalName.toLowerCase())) {
       finalName = `${name} (${n++})`;
     }
-    room.members.push({ id, name: finalName });
+    room.members.push(makeMember(id, finalName, userId));
     // Rejoining an emptied room (or one whose host has left): the joiner hosts.
     if (!room.members.some((m) => m.id === room.hostId)) room.hostId = id;
     return room;
+  }
+
+  /** The current member for an account, if present (one seat per account). */
+  memberByUserId(code: string, userId: string): Member | null {
+    return this.rooms.get(code)?.members.find((m) => m.userId === userId) ?? null;
+  }
+
+  setHost(code: string, id: string): void {
+    const room = this.rooms.get(code);
+    if (room && room.members.some((m) => m.id === id)) room.hostId = id;
   }
 
   // Removes a member. Does NOT delete an emptied room — the caller keeps it for a

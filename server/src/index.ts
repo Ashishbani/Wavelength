@@ -159,7 +159,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
     socket.on('room:create', ({ name, isPublic }, cb: (r: CreateJoinResult) => void) => {
       const clean = (name ?? '').trim().slice(0, 40);
       if (!clean) return cb({ ok: false, error: 'Please enter a name.' });
-      const state = rooms.createRoom(socket.id, clean, isPublic ?? true);
+      const state = rooms.createRoom(socket.id, clean, isPublic ?? true, uid);
       socket.join(state.code);
       cb({ ok: true, state, selfId: socket.id });
       if (uid) { presence.setRoom(uid, state.code); pushPresenceToFriends(uid); }
@@ -171,13 +171,26 @@ export function createServer(port = 3001, injectedDb?: DB) {
       const upper = (code ?? '').trim().toUpperCase();
       if (!clean) return cb({ ok: false, error: 'Please enter a name.' });
       try {
+        // One seat per account: if this account already holds a seat in the room
+        // (another tab / device), evict it and let this tab take over.
+        let reclaimHost = false;
+        if (uid) {
+          const prior = rooms.memberByUserId(upper, uid);
+          if (prior && prior.id !== socket.id) {
+            reclaimHost = rooms.isHost(upper, prior.id);
+            rooms.leaveRoom(prior.id);
+            const oldSock = io.sockets.sockets.get(prior.id);
+            if (oldSock) { oldSock.leave(upper); oldSock.emit('session:superseded'); }
+          }
+        }
         let state;
         if (!rooms.getRoom(upper) && roomRepo.findByCode(upper)) {
           // Reactivate a saved room that has no live instance.
-          state = rooms.createRoomWithCode(upper, socket.id, clean);
+          state = rooms.createRoomWithCode(upper, socket.id, clean, true, uid);
         } else {
-          state = rooms.joinRoom(upper, socket.id, clean);
+          state = rooms.joinRoom(upper, socket.id, clean, uid);
         }
+        if (reclaimHost) { rooms.setHost(upper, socket.id); state = rooms.getRoom(upper) ?? state; }
         cancelDeletion(upper);
         socket.join(upper);
         cb({ ok: true, state, selfId: socket.id });

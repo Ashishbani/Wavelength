@@ -177,6 +177,12 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 
 /* splash + lobby identity bar + guest entry */
 .splash { text-align: center; padding: 22vh 0; color: var(--muted); font-size: 15px; }
+.notice {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  padding: 11px 14px; border-radius: var(--radius-sm); font-size: 14px;
+  background: rgba(255, 177, 78, 0.12); border: 1px solid rgba(255, 177, 78, 0.35); color: #ffcf99;
+}
+.notice .grow { flex: 1; }
 .lobby-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px !important; margin-bottom: 16px; }
 .lobby-bar .who { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .guest-btn {
