@@ -79,6 +79,7 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   'room:state': (state: RoomState) => void;
   'playback:update': (playback: PlaybackState) => void;
+  'playback:sync': (playback: PlaybackState) => void;
   'chat:message': (msg: ChatMessage) => void;
   'reaction:show': (payload: { emoji: string; name: string }) => void;
   'lobby:rooms': (payload: { rooms: PublicRoomInfo[] }) => void;

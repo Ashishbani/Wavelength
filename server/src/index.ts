@@ -212,12 +212,11 @@ export function createServer(port = 3001, injectedDb?: DB) {
     socket.on('playback:seek', ({ positionSec }) =>
       memberAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { positionSec }, Date.now()))),
     );
-    // Heartbeat keeps the server's position anchor fresh (so late joiners land at
-    // the right spot) but does NOT broadcast — otherwise every member re-seeks on
-    // each beat, which shows up as repeated rewinding. In-sync members only correct
-    // on real discontinuities (join, play/pause/seek/skip).
+    // Heartbeat refreshes the anchor and broadcasts a distinct 'playback:sync'
+    // (not 'playback:update'), so clients apply it as a *gentle* drift correction
+    // (catch up if behind; no jarring rewinds) rather than a precise re-seek.
     socket.on('playback:heartbeat', ({ positionSec }) =>
-      hostAction((code) => { rooms.setPlayback(code, { positionSec }, Date.now()); }),
+      hostAction((code) => io.to(code).emit('playback:sync', rooms.setPlayback(code, { positionSec }, Date.now()))),
     );
 
     socket.on('queue:next', () => memberAction((code) => advanceAndLog(code)));

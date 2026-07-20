@@ -8,6 +8,7 @@ export type YTPlayerHandle = {
   getCurrentTime(): number;
   getDuration(): number;
   getTitle(): string;
+  getState(): number;
   loadVideo(id: string): void;
 };
 
@@ -46,6 +47,7 @@ export default function YouTubePlayer({ videoId, onReady, onEnded, onStateChange
               seekTo: (sec) => p.seekTo(sec, true),
               getCurrentTime: () => p.getCurrentTime(),
               getDuration: () => p.getDuration(),
+              getState: () => p.getPlayerState(),
               getTitle: () => {
                 const data = (p as unknown as { getVideoData?: () => { title?: string } }).getVideoData?.();
                 return data?.title ?? '';

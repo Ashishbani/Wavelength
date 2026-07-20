@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import type { RoomState, PlaybackState, ChatMessage } from '@wavelength/shared';
-import { effectivePosition, isDrifted, isValidVideoId } from '@wavelength/shared';
+import { effectivePosition, isValidVideoId } from '@wavelength/shared';
 import socket from './socket.js';
 import YouTubePlayer, { type YTPlayerHandle } from './YouTubePlayer.js';
 import { useClockOffset } from './useClockOffset.js';
@@ -85,25 +85,46 @@ export default function Room({
   function inviteFriend(userId: string) { socket.emit('invite:send', { toUserId: userId }); }
   const onlineFriends = friends.filter((f) => presence.get(f.userId)?.online);
 
-  // Apply server playback state to the local player.
-  function applyPlayback(pb: PlaybackState) {
+  // Apply server playback to the local player.
+  //  - hard (join / explicit play·pause·seek·skip): snap precisely, both directions.
+  //  - gentle (periodic heartbeat): catch up if we're behind; tolerate being a bit
+  //    ahead so we never repeatedly rewind. A big lead (>4s) still gets pulled back.
+  function applyPlayback(pb: PlaybackState, hard = true) {
     playbackRef.current = pb;
     setIsPlaying(pb.isPlaying && !!pb.videoId);
     const player = playerRef.current;
     if (!player || !pb.videoId) return;
-    const serverNow = Date.now() + offsetRef.current;
-    const target = effectivePosition(pb, serverNow);
-    if (isDrifted(player.getCurrentTime(), target)) player.seekTo(target);
+
+    const state = player.getState();
+    const BUFFERING = 3, UNSTARTED = -1;
+    const settling = state === BUFFERING || state === UNSTARTED;
+
+    if (!settling) {
+      const serverNow = Date.now() + offsetRef.current;
+      const target = effectivePosition(pb, serverNow);
+      const drift = player.getCurrentTime() - target; // >0 = we're ahead
+      if (!pb.isPlaying) {
+        if (Math.abs(drift) > 0.5) player.seekTo(target);
+      } else if (hard) {
+        if (Math.abs(drift) > 1) player.seekTo(target);
+      } else if (drift < -1.2 || drift > 4) {
+        player.seekTo(target);
+      }
+    }
     if (pb.isPlaying) player.play(); else player.pause();
   }
 
   useEffect(() => {
+    const onUpdate = (pb: PlaybackState) => applyPlayback(pb, true);
+    const onSync = (pb: PlaybackState) => applyPlayback(pb, false);
     socket.on('room:state', setState);
-    socket.on('playback:update', applyPlayback);
+    socket.on('playback:update', onUpdate);
+    socket.on('playback:sync', onSync);
     socket.on('chat:message', (m) => setMessages((prev) => [...prev, m].slice(-200)));
     return () => {
       socket.off('room:state', setState);
-      socket.off('playback:update', applyPlayback);
+      socket.off('playback:update', onUpdate);
+      socket.off('playback:sync', onSync);
       socket.off('chat:message');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
