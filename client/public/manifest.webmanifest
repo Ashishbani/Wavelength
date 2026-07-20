@@ -1,0 +1,13 @@
+{
+  "name": "Wavelength — listen together",
+  "short_name": "Wavelength",
+  "description": "Listen to the same music together, in perfect sync.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#080813",
+  "theme_color": "#8b5cff",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

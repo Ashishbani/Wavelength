@@ -58,6 +58,7 @@ export type CreateJoinResult =
 export interface ClientToServerEvents {
   'room:create': (payload: { name: string; isPublic?: boolean }, cb: (res: CreateJoinResult) => void) => void;
   'room:join': (payload: { code: string; name: string }, cb: (res: CreateJoinResult) => void) => void;
+  'room:leave': () => void;
   'playback:play': (payload: { positionSec: number }) => void;
   'playback:pause': (payload: { positionSec: number }) => void;
   'playback:seek': (payload: { positionSec: number }) => void;

@@ -220,6 +220,16 @@ export function createServer(port = 3001, injectedDb?: DB) {
     });
     socket.on('lobby:unsubscribe', () => { socket.leave(LOBBY); });
 
+    // Leave the current room without disconnecting the socket (SPA navigation).
+    socket.on('room:leave', () => {
+      const res = rooms.leaveRoom(socket.id);
+      if (!res) return;
+      socket.leave(res.code);
+      if (res.state) io.to(res.code).emit('room:state', res.state);
+      broadcastLobby();
+      if (uid) { presence.setRoom(uid, null); pushPresenceToFriends(uid); }
+    });
+
     socket.on('queue:loadPlaylist', (payload) => {
       const parsed = loadPlaylistSchema.safeParse(payload);
       if (!parsed.success) return;
