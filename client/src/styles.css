@@ -325,8 +325,9 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .np-meta { min-width: 0; }
 .np-title { font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .np-sub { color: var(--muted); font-size: 13px; }
-.np-status { display: flex; align-items: center; gap: 8px; margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 1; }
-.np-status .np-eq { height: 13px; width: 18px; }
+.np-status { display: flex; align-items: flex-end; gap: 8px; margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1; }
+.np-status .np-eq { height: 14px; width: 18px; }
+.np-status > span:last-child { position: relative; top: 1px; }
 
 /* progress bar */
 .progress { display: flex; align-items: center; gap: 10px; }
