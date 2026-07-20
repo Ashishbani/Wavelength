@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { apiGet, apiPost } from './api.js';
+import { apiGet, apiPost, apiPut } from './api.js';
 
-export interface AuthUser { id: string; email: string; displayName: string; }
+export interface AuthUser { id: string; email: string; displayName: string; username: string | null; }
 
 interface AuthValue {
   user: AuthUser | null;
@@ -9,6 +9,8 @@ interface AuthValue {
   login(email: string, password: string): Promise<void>;
   register(email: string, password: string, displayName: string): Promise<void>;
   logout(): Promise<void>;
+  setUsername(username: string): Promise<void>;
+  refresh(): Promise<void>;
 }
 
 const Ctx = createContext<AuthValue | null>(null);
@@ -36,8 +38,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiPost('/api/auth/logout', {});
     setUser(null);
   }
+  async function refresh() {
+    const r = await apiGet<{ user: AuthUser | null }>('/api/auth/me');
+    setUser(r.user);
+  }
+  async function setUsername(username: string) {
+    await apiPut('/api/account/username', { username });
+    await refresh();
+  }
 
-  return <Ctx.Provider value={{ user, loading, login, register, logout }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ user, loading, login, register, logout, setUsername, refresh }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth(): AuthValue {

@@ -24,6 +24,13 @@ Signing up (email + password) unlocks:
 - **Playlists** — save the current queue and load it into any room you host.
 - **Listening history** — a personal log of what played in rooms you were in.
 
+### Friends & presence (Phase 2b)
+
+Set an `@handle`, then add friends by handle (they accept your request). You'll
+see which friends are online and what room they're in, with one-click **Join**.
+Hosts can also invite an online friend directly — they get a notification with a
+Join button.
+
 ### Configuration
 
 Copy `.env.example` to `.env` in the repo root and set values before running the server:

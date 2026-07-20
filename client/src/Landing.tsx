@@ -4,6 +4,8 @@ import socket from './socket.js';
 import { useAuth } from './auth/AuthContext.js';
 import AuthPanel from './auth/AuthPanel.js';
 import AccountPanel from './AccountPanel.js';
+import FriendsPanel from './friends/FriendsPanel.js';
+import Toasts from './friends/Toasts.js';
 
 export default function Landing({ onJoined }: { onJoined: (s: RoomState, selfId: string) => void }) {
   const [name, setName] = useState('');
@@ -39,6 +41,7 @@ export default function Landing({ onJoined }: { onJoined: (s: RoomState, selfId:
 
   return (
     <div className="landing">
+      <Toasts onJoin={joinByCode} />
       <h1>Wavelength</h1>
       <p className="tagline">Get on the same wavelength.</p>
       <AuthPanel />
@@ -53,6 +56,7 @@ export default function Landing({ onJoined }: { onJoined: (s: RoomState, selfId:
         <button onClick={join} disabled={busy}>Join</button>
       </div>
       {user && <AccountPanel onJoin={joinByCode} />}
+      {user && <FriendsPanel onJoin={joinByCode} />}
       {error && <p className="error">{error}</p>}
     </div>
   );

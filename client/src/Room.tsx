@@ -7,6 +7,8 @@ import { useClockOffset } from './useClockOffset.js';
 import { parseVideoId } from './parseVideoId.js';
 import { useAuth } from './auth/AuthContext.js';
 import { apiGet, apiPost } from './auth/api.js';
+import { getFriends, type FriendSummary } from './friends/api.js';
+import { usePresence } from './friends/usePresence.js';
 
 export default function Room({ initialState, selfId }: { initialState: RoomState; selfId: string }) {
   const [state, setState] = useState<RoomState>(initialState);
@@ -44,6 +46,18 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
   function loadPlaylist(id: string) {
     socket.emit('queue:loadPlaylist', { playlistId: id });
   }
+
+  const presence = usePresence();
+  const [friends, setFriends] = useState<FriendSummary[]>([]);
+  useEffect(() => {
+    if (user?.username && isHost) getFriends().then((r) => setFriends(r.friends)).catch(() => {});
+  }, [user?.username, isHost]);
+
+  function inviteFriend(userId: string) {
+    socket.emit('invite:send', { toUserId: userId });
+  }
+
+  const onlineFriends = friends.filter((f) => presence.get(f.userId)?.online);
 
   // Apply server playback state to the local player.
   function applyPlayback(pb: PlaybackState) {
@@ -133,6 +147,15 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
                 >
                   <option value="" disabled>Load playlist…</option>
                   {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              )}
+              {user && onlineFriends.length > 0 && (
+                <select
+                  onChange={(e) => { if (e.target.value) inviteFriend(e.target.value); e.target.value = ''; }}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Invite a friend…</option>
+                  {onlineFriends.map((f) => <option key={f.userId} value={f.userId}>@{f.username}</option>)}
                 </select>
               )}
             </div>

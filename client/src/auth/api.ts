@@ -20,6 +20,13 @@ export function apiPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   }).then(handle<T>);
 }
+export function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return fetch(`${BASE}${path}`, {
+    method: 'PUT', credentials: 'include',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(handle<T>);
+}
 export function apiDelete<T>(path: string): Promise<T> {
   return fetch(`${BASE}${path}`, { method: 'DELETE', credentials: 'include' }).then(handle<T>);
 }

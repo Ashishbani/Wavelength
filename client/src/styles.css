@@ -46,3 +46,13 @@ input { border-radius: 8px; border: 1px solid #3a3a5a; background: #16162e; colo
 .account li { display: flex; gap: 6px; align-items: center; justify-content: space-between; margin: 4px 0; }
 .account li button:first-child { flex: 1; text-align: left; }
 select { border-radius: 8px; border: 1px solid #3a3a5a; background: #16162e; color: #e8e8f0; padding: 8px 10px; }
+
+/* Friends + presence */
+.friends { text-align: left; }
+.friends h4 { margin: 10px 0 4px; font-size: 13px; color: #9a9ac0; }
+.friends li { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #555; display: inline-block; }
+.dot.on { background: #4ade80; }
+.muted { color: #7a7aa0; font-size: 13px; }
+.toasts { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
+.toast { background: #23234a; border: 1px solid #3a3a6a; border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; align-items: center; box-shadow: 0 4px 16px rgba(0,0,0,.4); }

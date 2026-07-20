@@ -39,7 +39,7 @@ export function createAuthRouter(userRepo: ReturnType<typeof createUserRepo>): R
       const hash = await hashPassword(password);
       const user = userRepo.create(email.toLowerCase(), hash, displayName);
       res.cookie(COOKIE_NAME, signToken({ userId: user.id }), cookieOptions());
-      res.json({ id: user.id, email: user.email, displayName: user.displayName });
+      res.json({ id: user.id, email: user.email, displayName: user.displayName, username: user.username });
     } catch (e) {
       if ((e as Error).message === 'EMAIL_TAKEN') return res.status(409).json({ error: 'That email is already registered.' });
       res.status(500).json({ error: 'Registration failed.' });
@@ -55,7 +55,7 @@ export function createAuthRouter(userRepo: ReturnType<typeof createUserRepo>): R
     const ok = user ? await verifyPassword(password, user.passwordHash) : false;
     if (!user || !ok) return res.status(401).json({ error: 'Invalid email or password' });
     res.cookie(COOKIE_NAME, signToken({ userId: user.id }), cookieOptions());
-    res.json({ id: user.id, email: user.email, displayName: user.displayName });
+    res.json({ id: user.id, email: user.email, displayName: user.displayName, username: user.username });
   });
 
   router.post('/logout', (_req, res) => {
