@@ -268,14 +268,6 @@ export default function Room({
             <ReactionBar />
           </div>
 
-          <div className="card panel">
-            <div className="addbar">
-              <input value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') addSong(); }}
-                placeholder="Paste a YouTube link or 11-char id" />
-              <button className="primary" onClick={addSong}>Add to queue</button>
-            </div>
-          </div>
         </section>
 
         <aside className="side">
@@ -329,6 +321,15 @@ export default function Room({
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className="card panel">
+            <div className="addbar">
+              <input value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addSong(); }}
+                placeholder="Paste a YouTube link…" />
+              <button className="primary" onClick={addSong}>Add to queue</button>
+            </div>
           </div>
         </aside>
       </div>
