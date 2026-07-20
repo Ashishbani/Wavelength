@@ -47,10 +47,6 @@ export interface PublicRoomInfo {
   nowPlaying: boolean;
 }
 
-/** Allowed reaction emojis (validated server-side). */
-export const REACTIONS = ['❤️', '🔥', '😂', '🎉', '🙌', '😮', '💯', '🎵'] as const;
-export type ReactionEmoji = (typeof REACTIONS)[number];
-
 export type CreateJoinResult =
   | { ok: true; state: RoomState; selfId: string }
   | { ok: false; error: string };
@@ -68,7 +64,6 @@ export interface ClientToServerEvents {
   'queue:vote': (payload: { itemId: string }) => void;
   'queue:loadPlaylist': (payload: { playlistId: string }) => void;
   'chat:send': (payload: { text: string }) => void;
-  'reaction:send': (payload: { emoji: string }) => void;
   'lobby:subscribe': () => void;
   'lobby:unsubscribe': () => void;
   'time:ping': (payload: { t0: number }, cb: (res: { t0: number; serverTime: number }) => void) => void;
@@ -81,7 +76,6 @@ export interface ServerToClientEvents {
   'playback:update': (playback: PlaybackState) => void;
   'playback:sync': (playback: PlaybackState) => void;
   'chat:message': (msg: ChatMessage) => void;
-  'reaction:show': (payload: { emoji: string; name: string }) => void;
   'lobby:rooms': (payload: { rooms: PublicRoomInfo[] }) => void;
   'presence:snapshot': (payload: { friends: PresenceInfo[] }) => void;
   'presence:update': (payload: PresenceInfo) => void;

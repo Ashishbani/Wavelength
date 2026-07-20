@@ -9,7 +9,6 @@ import { useAuth } from './auth/AuthContext.js';
 import { apiGet, apiPost } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
-import { ReactionBar, ReactionOverlay } from './room/Reactions.js';
 import { PrevIcon, NextIcon, PlayIcon, PauseIcon } from './room/icons.js';
 import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 
@@ -232,25 +231,22 @@ export default function Room({
 
       <div className="room-grid">
         <section className="stage">
-          <div className="stage-media">
-            {hasVideo ? (
-              <YouTubePlayer
-                videoId={state.playback.videoId}
-                onReady={onPlayerReady}
-                onEnded={() => { if (isHostRef.current) hostNext(); }}
-                onStateChange={onPlayerStateChange}
-              />
-            ) : (
-              <div className="stage-empty">
-                <div>
-                  <div className="logo-eq" style={{ margin: '0 auto 14px', height: 34 }}><span /><span /><span /><span /></div>
-                  <p><b>Queue up a track to get started</b></p>
-                  <p className="muted">Paste a YouTube link below — it plays for everyone, in sync.</p>
-                </div>
+          {hasVideo ? (
+            <YouTubePlayer
+              videoId={state.playback.videoId}
+              onReady={onPlayerReady}
+              onEnded={() => { if (isHostRef.current) hostNext(); }}
+              onStateChange={onPlayerStateChange}
+            />
+          ) : (
+            <div className="stage-empty">
+              <div>
+                <div className="logo-eq" style={{ margin: '0 auto 14px', height: 34 }}><span /><span /><span /><span /></div>
+                <p><b>Queue up a track to get started</b></p>
+                <p className="muted">Add a YouTube link from the sidebar — it plays for everyone, in sync.</p>
               </div>
-            )}
-            <ReactionOverlay />
-          </div>
+            </div>
+          )}
 
           <div className="card panel np-card">
             {cover && <div className="cover-bg" style={{ backgroundImage: `url(${cover})` }} />}
@@ -292,8 +288,6 @@ export default function Room({
                 </select>
               )}
             </div>
-
-            <ReactionBar />
           </div>
 
         </section>

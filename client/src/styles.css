@@ -282,18 +282,24 @@ button.link:hover { background: none; filter: brightness(1.2); }
 @media (max-width: 880px) { .room-grid { grid-template-columns: 1fr; } }
 
 /* now-playing stage */
-.stage { display: flex; flex-direction: column; gap: 16px; }
+.stage {
+  display: flex; flex-direction: column; gap: 16px; align-items: center;
+  /* Refined 16:9 player, height-capped and centered in the column. */
+  --stage-w: min(100%, 90vh);
+}
 .player-wrap {
   position: relative; border-radius: var(--radius); overflow: hidden;
   background: #000; box-shadow: var(--shadow);
-  width: 100%; height: min(52vh, 480px);
+  width: var(--stage-w); aspect-ratio: 16 / 9; margin: 0 auto;
 }
 .player-wrap > div, .player-wrap iframe { display: block; width: 100% !important; height: 100% !important; border: 0; }
 .stage-empty {
-  height: min(42vh, 380px); min-height: 240px; display: grid; place-items: center; text-align: center;
+  width: var(--stage-w); aspect-ratio: 16 / 9; margin: 0 auto;
+  display: grid; place-items: center; text-align: center;
   color: var(--muted); border: 1px dashed var(--border-strong); border-radius: var(--radius);
   background: var(--surface);
 }
+.stage > .np-card { width: var(--stage-w); margin: 0 auto; }
 
 /* now-playing card with ambient album art */
 .np-card { position: relative; overflow: hidden; }
@@ -456,17 +462,6 @@ button.link:hover { background: none; filter: brightness(1.2); }
    Room extras — reactions, voting, wider layout
    ============================================================ */
 .room-grid { grid-template-columns: 1fr 380px; }
-.stage-media { position: relative; }
-.reaction-overlay { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
-.floater { position: absolute; bottom: 8%; font-size: 30px; animation: floatUp 2.6s ease-out forwards; }
-@keyframes floatUp {
-  0% { opacity: 0; transform: translateY(0) scale(0.6); }
-  15% { opacity: 1; transform: translateY(-10%) scale(1.1); }
-  100% { opacity: 0; transform: translateY(-320px) scale(1); }
-}
-.reaction-bar { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
-.react-btn { font-size: 18px; padding: 6px 10px; background: rgba(255,255,255,0.05); }
-.react-btn:hover { background: rgba(139, 92, 255, 0.18); transform: translateY(-1px) scale(1.05); }
 .vote {
   font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 8px;
   background: rgba(255,255,255,0.06); color: var(--muted);

@@ -9,7 +9,7 @@ import type {
   ServerToClientEvents,
   CreateJoinResult,
 } from '@wavelength/shared';
-import { isValidVideoId, REACTIONS } from '@wavelength/shared';
+import { isValidVideoId } from '@wavelength/shared';
 import type { PresenceInfo } from '@wavelength/shared';
 import { RoomManager } from './roomManager.js';
 import { openDb, migrate, type DB } from './db/db.js';
@@ -237,14 +237,6 @@ export function createServer(port = 3001, injectedDb?: DB) {
       if (!room || typeof itemId !== 'string') return;
       const updated = rooms.voteQueueItem(room.code, itemId);
       io.to(room.code).emit('room:state', updated);
-    });
-
-    // Floating reaction emotes, relayed to everyone in the room.
-    socket.on('reaction:send', ({ emoji }) => {
-      const room = rooms.getRoomByMember(socket.id);
-      if (!room) return;
-      if (!(REACTIONS as readonly string[]).includes(emoji)) return;
-      io.to(room.code).emit('reaction:show', { emoji, name: nameOf(socket.id, room.code) });
     });
 
     socket.on('lobby:subscribe', () => {
