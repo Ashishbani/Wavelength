@@ -5,6 +5,8 @@ import socket from './socket.js';
 import YouTubePlayer, { type YTPlayerHandle } from './YouTubePlayer.js';
 import { useClockOffset } from './useClockOffset.js';
 import { parseVideoId } from './parseVideoId.js';
+import { useAuth } from './auth/AuthContext.js';
+import { apiGet, apiPost } from './auth/api.js';
 
 export default function Room({ initialState, selfId }: { initialState: RoomState; selfId: string }) {
   const [state, setState] = useState<RoomState>(initialState);
@@ -18,6 +20,30 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
   offsetRef.current = offset;
 
   const isHost = state.hostId === selfId;
+  const { user } = useAuth();
+  const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (user && isHost) {
+      apiGet<{ playlists: { id: string; name: string }[] }>('/api/playlists')
+        .then((r) => setPlaylists(r.playlists))
+        .catch(() => {});
+    }
+  }, [user, isHost]);
+
+  async function saveQueueAsPlaylist() {
+    const name = window.prompt('Playlist name?');
+    if (!name) return;
+    const items = state.queue.map((q) => ({ videoId: q.videoId, title: q.title }));
+    if (state.playback.videoId) items.unshift({ videoId: state.playback.videoId, title: state.playback.videoId });
+    await apiPost('/api/playlists', { name, items });
+    const r = await apiGet<{ playlists: { id: string; name: string }[] }>('/api/playlists');
+    setPlaylists(r.playlists);
+  }
+
+  function loadPlaylist(id: string) {
+    socket.emit('queue:loadPlaylist', { playlistId: id });
+  }
 
   // Apply server playback state to the local player.
   function applyPlayback(pb: PlaybackState) {
@@ -99,6 +125,16 @@ export default function Room({ initialState, selfId }: { initialState: RoomState
               <button onClick={hostPlay}>Play</button>
               <button onClick={hostPause}>Pause</button>
               <button onClick={hostNext}>Skip ▶▶</button>
+              {user && <button onClick={saveQueueAsPlaylist}>Save queue</button>}
+              {user && playlists.length > 0 && (
+                <select
+                  onChange={(e) => { if (e.target.value) loadPlaylist(e.target.value); e.target.value = ''; }}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Load playlist…</option>
+                  {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              )}
             </div>
           )}
           <div className="add-song">

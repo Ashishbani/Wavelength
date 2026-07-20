@@ -12,7 +12,7 @@ button:hover { background: #2e2e5e; }
 input { border-radius: 8px; border: 1px solid #3a3a5a; background: #16162e; color: #e8e8f0; padding: 8px 10px; }
 
 /* Landing */
-.landing { max-width: 420px; margin: 10vh auto; text-align: center; }
+.landing { max-width: 520px; margin: 10vh auto; text-align: center; }
 .tagline { color: #9a9ac0; margin-top: -8px; }
 .landing label { display: block; text-align: left; margin: 16px 0; }
 .landing input { width: 100%; }
@@ -36,3 +36,13 @@ input { border-radius: 8px; border: 1px solid #3a3a5a; background: #16162e; colo
 .chat .messages { height: 220px; overflow-y: auto; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
 .chat-input { display: flex; gap: 6px; margin-top: 8px; }
 .chat-input input { flex: 1; }
+
+/* Auth + account */
+.auth-panel { background: #16162e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 12px; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+.auth-panel .auth-tabs { display: flex; gap: 8px; }
+.auth-panel .auth-tabs .active { background: #3a3a7a; }
+.auth-panel input { width: 100%; }
+.account { text-align: left; margin-top: 16px; }
+.account li { display: flex; gap: 6px; align-items: center; justify-content: space-between; margin: 4px 0; }
+.account li button:first-child { flex: 1; text-align: left; }
+select { border-radius: 8px; border: 1px solid #3a3a5a; background: #16162e; color: #e8e8f0; padding: 8px 10px; }
