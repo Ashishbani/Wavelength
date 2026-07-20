@@ -356,15 +356,15 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .addbar input { flex: 1; min-width: 0; }
 
 /* sidebar */
-.side { display: flex; flex-direction: column; gap: 16px; }
+.side { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
 .tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.28); padding: 4px; border-radius: 12px; margin-bottom: 4px; }
 .tabs button { flex: 1; background: transparent; border: none; padding: 8px; border-radius: 9px; color: var(--muted); font-size: 13px; }
 .tabs button.active { background: var(--surface-2); color: var(--text); }
 .count { color: var(--faint); font-weight: 600; }
 
 /* chat */
-.chat-panel { display: flex; flex-direction: column; min-height: 340px; }
-.messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; max-height: 360px; padding-right: 4px; }
+.chat-panel { display: flex; flex-direction: column; flex: 1; min-height: 320px; }
+.messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; padding-right: 4px; }
 .msg { display: flex; gap: 8px; align-items: flex-start; }
 .msg .bubble { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 7px 11px; font-size: 14px; }
 .msg .who { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
@@ -477,7 +477,7 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .me-chip .me-name { font-weight: 600; }
 .me-chip .me-name small { color: var(--muted); font-weight: 500; }
 .me-chip .me-role { color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-.list.scroll { max-height: 420px; overflow-y: auto; }
+.list.scroll { flex: 1; min-height: 0; overflow-y: auto; }
 
 /* ============================================================
    DeepJoin (invite link landing)
