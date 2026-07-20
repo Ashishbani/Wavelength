@@ -70,7 +70,7 @@ describe('socket server', () => {
     expect(update.isPlaying).toBe(true);
   });
 
-  it('rejects playback control from a non-host', async () => {
+  it('allows playback control from any member (collaborative)', async () => {
     server = createServer(0);
     const port = (server.httpServer.address() as { port: number }).port;
 
@@ -86,11 +86,12 @@ describe('socket server', () => {
     sockets.push(guest);
     await new Promise<CreateJoinResult>((res) => guest.emit('room:join', { code, name: 'Bob' }, res));
 
-    // guest tries to pause; host should NOT see a playback:update from it
-    let hostSawUpdate = false;
-    host.on('playback:update', () => { hostSawUpdate = true; });
-    guest.emit('playback:pause', { positionSec: 10 });
-    await new Promise((r) => setTimeout(r, 150));
-    expect(hostSawUpdate).toBe(false);
+    // a non-host member pauses; everyone (incl. the host) receives the update
+    const update = await new Promise<{ isPlaying: boolean; positionSec: number }>((res) => {
+      host.on('playback:update', (pb) => res(pb));
+      guest.emit('playback:pause', { positionSec: 10 });
+    });
+    expect(update.isPlaying).toBe(false);
+    expect(update.positionSec).toBe(10);
   });
 });

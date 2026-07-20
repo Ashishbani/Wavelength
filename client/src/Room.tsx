@@ -60,11 +60,11 @@ export default function Room({
   const [playlists, setPlaylists] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
-    if (user && isHost) {
+    if (user) {
       apiGet<{ playlists: { id: string; name: string }[] }>('/api/playlists')
         .then((r) => setPlaylists(r.playlists)).catch(() => {});
     }
-  }, [user, isHost]);
+  }, [user]);
 
   async function saveQueueAsPlaylist() {
     const name = window.prompt('Playlist name?');
@@ -80,8 +80,8 @@ export default function Room({
   const presence = usePresence();
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   useEffect(() => {
-    if (user?.username && isHost) getFriends().then((r) => setFriends(r.friends)).catch(() => {});
-  }, [user?.username, isHost]);
+    if (user?.username) getFriends().then((r) => setFriends(r.friends)).catch(() => {});
+  }, [user?.username]);
   function inviteFriend(userId: string) { socket.emit('invite:send', { toUserId: userId }); }
   const onlineFriends = friends.filter((f) => presence.get(f.userId)?.online);
 
@@ -140,15 +140,12 @@ export default function Room({
     applyPlayback(playbackRef.current);
   }
   function onPlayerStateChange(playing: boolean, positionSec: number) {
+    // Collaborative control: any member's play/pause (incl. via native YouTube
+    // controls) is pushed to the room. Changes already matching the shared state
+    // are our own sync — ignore them to avoid loops.
     if (playing === playbackRef.current.isPlaying) return;
-    if (isHostRef.current) {
-      if (playing) socket.emit('playback:play', { positionSec });
-      else socket.emit('playback:pause', { positionSec });
-    } else {
-      const p = playerRef.current;
-      if (!p) return;
-      if (playbackRef.current.isPlaying) p.play(); else p.pause();
-    }
+    if (playing) socket.emit('playback:play', { positionSec });
+    else socket.emit('playback:pause', { positionSec });
   }
 
   function hostPlay() { socket.emit('playback:play', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
@@ -157,7 +154,7 @@ export default function Room({
   function vote(itemId: string) { socket.emit('queue:vote', { itemId }); }
 
   function seek(e: MouseEvent<HTMLDivElement>) {
-    if (!isHost || !dur) return;
+    if (!dur) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     const target = frac * dur;
@@ -197,7 +194,7 @@ export default function Room({
         <button className="ghost sm-btn" onClick={copyLink}>{copied ? '✓ Copied' : '🔗 Copy invite link'}</button>
         <span className="role">
           <span className="live-pill"><span className="beat" />IN SYNC</span>
-          {isHost ? '🎧 DJ' : 'Listening'}
+          {isHost ? '🎧 Host' : '🎶 Member'}
           <button className="ghost sm-btn" onClick={onLeave}>Leave</button>
         </span>
       </header>
@@ -239,32 +236,26 @@ export default function Room({
 
             <div className="progress" style={{ marginTop: 14 }}>
               <span className="time">{fmtTime(pos)}</span>
-              <div className={isHost ? 'track seekable' : 'track'} onClick={seek}><div className="fill" style={{ width: `${pct}%` }} /></div>
+              <div className="track seekable" onClick={seek}><div className="fill" style={{ width: `${pct}%` }} /></div>
               <span className="time">{fmtTime(dur)}</span>
             </div>
 
             <div className="transport" style={{ marginTop: 14 }}>
-              {isHost ? (
-                <>
-                  <button className="play-btn" onClick={isPlaying ? hostPause : hostPlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
-                  <button className="round-btn" onClick={hostNext} title="Skip">⏭</button>
-                  <span className="spacer" />
-                  {user && <button className="ghost" onClick={saveQueueAsPlaylist}>Save queue</button>}
-                  {user && playlists.length > 0 && (
-                    <select className="control-select" onChange={(e) => { if (e.target.value) loadPlaylist(e.target.value); e.target.value = ''; }} defaultValue="">
-                      <option value="" disabled>Load playlist…</option>
-                      {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  )}
-                  {user && onlineFriends.length > 0 && (
-                    <select className="control-select" onChange={(e) => { if (e.target.value) inviteFriend(e.target.value); e.target.value = ''; }} defaultValue="">
-                      <option value="" disabled>Invite a friend…</option>
-                      {onlineFriends.map((f) => <option key={f.userId} value={f.userId}>@{f.username}</option>)}
-                    </select>
-                  )}
-                </>
-              ) : (
-                <span className="muted">Only the DJ controls playback — you're perfectly in sync.</span>
+              <button className="play-btn" onClick={isPlaying ? hostPause : hostPlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
+              <button className="round-btn" onClick={hostNext} title="Skip">⏭</button>
+              <span className="spacer" />
+              {user && <button className="ghost" onClick={saveQueueAsPlaylist}>Save queue</button>}
+              {user && playlists.length > 0 && (
+                <select className="control-select" onChange={(e) => { if (e.target.value) loadPlaylist(e.target.value); e.target.value = ''; }} defaultValue="">
+                  <option value="" disabled>Load playlist…</option>
+                  {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              )}
+              {user && onlineFriends.length > 0 && (
+                <select className="control-select" onChange={(e) => { if (e.target.value) inviteFriend(e.target.value); e.target.value = ''; }} defaultValue="">
+                  <option value="" disabled>Invite a friend…</option>
+                  {onlineFriends.map((f) => <option key={f.userId} value={f.userId}>@{f.username}</option>)}
+                </select>
               )}
             </div>
 

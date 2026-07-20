@@ -167,26 +167,33 @@ export function createServer(port = 3001, injectedDb?: DB) {
       }
     });
 
+    // Host-anchored actions (drift heartbeat, end-of-track advance) stay single-source.
     function hostAction(fn: (code: string) => void) {
       const room = rooms.getRoomByMember(socket.id);
       if (!room || !rooms.isHost(room.code, socket.id)) return;
       fn(room.code);
     }
+    // Collaborative control: any member of the room may drive playback.
+    function memberAction(fn: (code: string) => void) {
+      const room = rooms.getRoomByMember(socket.id);
+      if (!room) return;
+      fn(room.code);
+    }
 
     socket.on('playback:play', ({ positionSec }) =>
-      hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { isPlaying: true, positionSec }, Date.now()))),
+      memberAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { isPlaying: true, positionSec }, Date.now()))),
     );
     socket.on('playback:pause', ({ positionSec }) =>
-      hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { isPlaying: false, positionSec }, Date.now()))),
+      memberAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { isPlaying: false, positionSec }, Date.now()))),
     );
     socket.on('playback:seek', ({ positionSec }) =>
-      hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { positionSec }, Date.now()))),
+      memberAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { positionSec }, Date.now()))),
     );
     socket.on('playback:heartbeat', ({ positionSec }) =>
       hostAction((code) => io.to(code).emit('playback:update', rooms.setPlayback(code, { positionSec }, Date.now()))),
     );
 
-    socket.on('queue:next', () => hostAction((code) => advanceAndLog(code)));
+    socket.on('queue:next', () => memberAction((code) => advanceAndLog(code)));
 
     socket.on('queue:add', ({ videoId, title }) => {
       const room = rooms.getRoomByMember(socket.id);
@@ -234,7 +241,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
       const parsed = loadPlaylistSchema.safeParse(payload);
       if (!parsed.success) return;
       const room = rooms.getRoomByMember(socket.id);
-      if (!room || !rooms.isHost(room.code, socket.id)) return;
+      if (!room) return;
       const userId = (socket.data as { userId?: string }).userId;
       if (!userId) return;
       const playlist = playlistRepo.findById(parsed.data.playlistId);
@@ -260,7 +267,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
       const parsed = inviteSchema.safeParse(payload);
       if (!parsed.success || !uid) return;
       const room = rooms.getRoomByMember(socket.id);
-      if (!room || !rooms.isHost(room.code, socket.id)) return;
+      if (!room) return;
       if (!friendRepo.areFriends(uid, parsed.data.toUserId)) return;
       const roomName = roomRepo.findByCode(room.code)?.name ?? null;
       io.to(`user:${parsed.data.toUserId}`).emit('invite:receive', {
