@@ -1,9 +1,16 @@
 import Database from 'better-sqlite3';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export type DB = Database.Database;
 
-export function openDb(path = process.env.DB_PATH ?? 'wavelength.sqlite'): DB {
-  const db = new Database(path);
+export function openDb(dbPath = process.env.DB_PATH ?? 'wavelength.sqlite'): DB {
+  // Ensure the parent directory exists (e.g. a mounted /data volume on a host).
+  if (dbPath !== ':memory:') {
+    const dir = path.dirname(path.resolve(dbPath));
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   return db;
