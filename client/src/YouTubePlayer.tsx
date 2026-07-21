@@ -36,7 +36,9 @@ export default function YouTubePlayer({ videoId, onReady, onEnded, onStateChange
         height: '100%',
         width: '100%',
         videoId: videoId ?? undefined,
-        playerVars: { autoplay: 0, controls: 1, rel: 0 },
+        // playsinline is required on iOS or playback is forced fullscreen and
+        // often refuses to start inline.
+        playerVars: { autoplay: 0, controls: 1, rel: 0, playsinline: 1 },
         events: {
           onReady: () => {
             const p = playerRef.current!;

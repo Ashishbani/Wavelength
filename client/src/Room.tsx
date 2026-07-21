@@ -43,6 +43,10 @@ export default function Room({
   const [urlInput, setUrlInput] = useState('');
   const [tab, setTab] = useState<'queue' | 'chat' | 'people'>('chat');
   const [isPlaying, setIsPlaying] = useState(false);
+  // What the local YouTube player is actually doing (vs. isPlaying = the shared
+  // intent). On mobile, autoplay is blocked outside a tap, so these can diverge.
+  const [localPlaying, setLocalPlaying] = useState(false);
+  const [needTap, setNeedTap] = useState(false);
   const [pos, setPos] = useState(0);
   const [dur, setDur] = useState(0);
   const [title, setTitle] = useState('');
@@ -162,6 +166,7 @@ export default function Room({
     applyPlayback(playbackRef.current);
   }
   function onPlayerStateChange(playing: boolean, positionSec: number) {
+    setLocalPlaying(playing);
     // Collaborative control: any member's play/pause (incl. via native YouTube
     // controls) is pushed to the room. Changes already matching the shared state
     // are our own sync — ignore them to avoid loops.
@@ -170,8 +175,33 @@ export default function Room({
     else socket.emit('playback:pause', { positionSec });
   }
 
+  // If the room is playing but our player isn't (mobile autoplay block, or we
+  // just joined mid-song), surface a "tap to play" prompt after a short grace so
+  // desktop autoplay never flashes it. A real tap satisfies the mobile gesture.
+  useEffect(() => {
+    if (!(state.playback.videoId && isPlaying && !localPlaying)) { setNeedTap(false); return; }
+    const t = window.setTimeout(() => setNeedTap(true), 700);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, localPlaying, state.playback.videoId]);
+
+  function resumeLocal() {
+    const p = playerRef.current;
+    if (!p) return;
+    const target = effectivePosition(playbackRef.current, Date.now() + offsetRef.current);
+    p.seekTo(target);
+    p.play(); // inside the tap gesture, so mobile allows it
+    setNeedTap(false);
+  }
+
   function hostPlay() { socket.emit('playback:play', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
   function hostPause() { socket.emit('playback:pause', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
+  // Drive the local player directly from the tap first (mobile needs the play()
+  // call inside the gesture), then broadcast the intent to the room.
+  function togglePlay() {
+    if (isPlaying) { playerRef.current?.pause(); hostPause(); }
+    else { playerRef.current?.play(); hostPlay(); }
+  }
   function hostNext() { socket.emit('queue:next'); }
   function restart() { playerRef.current?.seekTo(0); socket.emit('playback:seek', { positionSec: 0 }); }
   function vote(itemId: string) { socket.emit('queue:vote', { itemId }); }
@@ -232,12 +262,20 @@ export default function Room({
       <div className="room-grid">
         <section className="stage">
           {hasVideo ? (
-            <YouTubePlayer
-              videoId={state.playback.videoId}
-              onReady={onPlayerReady}
-              onEnded={() => { if (isHostRef.current) hostNext(); }}
-              onStateChange={onPlayerStateChange}
-            />
+            <div className="player-shell">
+              <YouTubePlayer
+                videoId={state.playback.videoId}
+                onReady={onPlayerReady}
+                onEnded={() => { if (isHostRef.current) hostNext(); }}
+                onStateChange={onPlayerStateChange}
+              />
+              {needTap && (
+                <button className="tap-to-play" onClick={resumeLocal}>
+                  <span className="tap-icon"><PlayIcon /></span>
+                  <span>Tap to play in sync</span>
+                </button>
+              )}
+            </div>
           ) : (
             <div className="stage-empty">
               <div>
@@ -269,7 +307,7 @@ export default function Room({
 
             <div className="transport" style={{ marginTop: 14 }}>
               <button className="round-btn" onClick={restart} title="Restart track"><PrevIcon /></button>
-              <button className="play-btn" onClick={isPlaying ? hostPause : hostPlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+              <button className="play-btn" onClick={togglePlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
               <button className="round-btn" onClick={hostNext} title="Next track"><NextIcon /></button>
             </div>
             {user && (

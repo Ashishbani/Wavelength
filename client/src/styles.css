@@ -491,3 +491,62 @@ button.link:hover { background: none; filter: brightness(1.2); }
 }
 .join-actions { display: flex; gap: 8px; margin-top: 4px; }
 .join-actions .primary { flex: 1; }
+
+/* ============================================================
+   Tap-to-play overlay (mobile autoplay is blocked outside a tap)
+   ============================================================ */
+.player-shell { position: relative; }
+.tap-to-play {
+  position: absolute; inset: 0; z-index: 6; width: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  background: rgba(8, 8, 19, 0.62);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  color: #fff; font-size: 15px; font-weight: 700;
+  border: none; border-radius: var(--radius);
+  animation: fadein 0.2s ease;
+}
+.tap-to-play:hover { background: rgba(8, 8, 19, 0.62); }
+.tap-to-play .tap-icon {
+  width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--grad); box-shadow: 0 10px 30px rgba(139, 92, 255, 0.55);
+}
+.tap-to-play .tap-icon svg { width: 26px; height: 26px; margin-left: 3px; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+/* ============================================================
+   Responsive — tablets & phones
+   ============================================================ */
+@media (max-width: 720px) {
+  .app, .app.app-wide { padding: 14px; }
+  .room-head { gap: 10px; margin-bottom: 14px; }
+  .room-head .wordmark { font-size: 18px; }
+  .room-head .role { margin-left: 0; width: 100%; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+  .room-badge { font-size: 12px; padding: 5px 10px; }
+  /* Video keeps a clean 16:9 box instead of a tall fixed height. */
+  .player-wrap { height: auto; aspect-ratio: 16 / 9; }
+  .transport { gap: 12px; }
+  .transport-extra { gap: 6px; }
+  .control-select { flex: 1; }
+  .toasts { top: 10px; right: 10px; left: 10px; }
+  .toast { max-width: none; }
+  .np-title { font-size: 15px; }
+  .chat-panel { min-height: 300px; }
+  .lobby, .lobby-side, .lobby-main { min-width: 0; }
+}
+
+@media (max-width: 460px) {
+  .app, .app.app-wide { padding: 10px; }
+  .brand h1 { font-size: 34px; }
+  .brand .logo-row { gap: 10px; }
+  .features { grid-template-columns: 1fr; }
+  .landing .card { padding: 16px; }
+  .auth-form { padding: 18px !important; }
+  .auth-hero .wordmark { font-size: 32px; }
+  .hero-tag { font-size: 16px; }
+  /* Hide the @username on the header chip so it never crowds the controls. */
+  .me-chip .me-name small { display: none; }
+  /* Bigger, thumb-friendly transport targets. */
+  .play-btn { width: 60px; height: 60px; }
+  .round-btn { width: 46px; height: 46px; }
+  .room-card { padding: 12px; }
+}
