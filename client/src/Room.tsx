@@ -196,11 +196,23 @@ export default function Room({
 
   function hostPlay() { socket.emit('playback:play', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
   function hostPause() { socket.emit('playback:pause', { positionSec: playerRef.current?.getCurrentTime() ?? 0 }); }
-  // Drive the local player directly from the tap first (mobile needs the play()
-  // call inside the gesture), then broadcast the intent to the room.
+  // The transport button reflects and controls what OUR player is actually doing
+  // (not just the shared intent), because on mobile the shared state can say
+  // "playing" while our audio is blocked. Every branch drives the player inside
+  // the tap gesture, which is what mobile requires to start audio.
   function togglePlay() {
-    if (isPlaying) { playerRef.current?.pause(); hostPause(); }
-    else { playerRef.current?.play(); hostPlay(); }
+    const p = playerRef.current;
+    if (localPlaying) {
+      // We're truly playing → pause for everyone.
+      p?.pause(); hostPause();
+    } else if (playbackRef.current.isPlaying) {
+      // The room is rolling but our audio is stopped (mobile autoplay block, or
+      // we joined mid-song) → just catch our player up locally, no re-broadcast.
+      resumeLocal();
+    } else {
+      // The room is paused → start it for everyone.
+      p?.play(); hostPlay();
+    }
   }
   function hostNext() { socket.emit('queue:next'); }
   function restart() { playerRef.current?.seekTo(0); socket.emit('playback:seek', { positionSec: 0 }); }
@@ -307,7 +319,7 @@ export default function Room({
 
             <div className="transport" style={{ marginTop: 14 }}>
               <button className="round-btn" onClick={restart} title="Restart track"><PrevIcon /></button>
-              <button className="play-btn" onClick={togglePlay} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+              <button className="play-btn" onClick={togglePlay} title={localPlaying ? 'Pause' : 'Play'}>{localPlaying ? <PauseIcon /> : <PlayIcon />}</button>
               <button className="round-btn" onClick={hostNext} title="Next track"><NextIcon /></button>
             </div>
             {user && (
