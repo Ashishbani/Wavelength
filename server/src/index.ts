@@ -96,9 +96,13 @@ export async function createServer(port = 3001, injectedDb?: DB) {
     io.to(LOBBY).emit('lobby:rooms', { rooms: rooms.listPublicRooms() });
   }
 
-  // Emptied rooms are kept for a short grace period so a refresh/reconnect can
-  // rejoin the same live room (with its queue) instead of finding it gone.
-  const ROOM_GRACE_MS = 20000;
+  // Emptied rooms are kept for a grace period so a refresh/reconnect — or a
+  // friend opening a freshly shared invite link while the host is briefly
+  // backgrounded (e.g. switched to a messaging app to send the link) — can still
+  // rejoin the same live room instead of finding it gone. Empty rooms are hidden
+  // from Explore, so a longer window has no ghost-listing cost. Override with the
+  // ROOM_GRACE_MS env var if needed.
+  const ROOM_GRACE_MS = Number(process.env.ROOM_GRACE_MS) || 10 * 60 * 1000;
   const pendingDeletions = new Map<string, ReturnType<typeof setTimeout>>();
   function cancelDeletion(code: string) {
     const t = pendingDeletions.get(code);
