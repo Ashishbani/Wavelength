@@ -63,7 +63,16 @@ export default function YouTubePlayer({ videoId, onReady, onEnded, onStateChange
             else if (e.data === YT.PlayerState.PLAYING) onStateChange(true, p.getCurrentTime());
             else if (e.data === YT.PlayerState.PAUSED) {
               if (Date.now() < suppressPausedUntil.current) return;
-              onStateChange(false, p.getCurrentTime());
+              // A genuine pause stays paused; seeks, buffering and mobile blips
+              // bounce back to PLAYING within a moment. Confirm the pause is still
+              // real before reporting it, so a transient PAUSED never pauses the
+              // whole room.
+              window.setTimeout(() => {
+                const pl = playerRef.current;
+                if (pl && pl.getPlayerState() === YT.PlayerState.PAUSED) {
+                  onStateChange(false, pl.getCurrentTime());
+                }
+              }, 500);
             }
           },
         },
