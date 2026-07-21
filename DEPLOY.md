@@ -1,68 +1,60 @@
 # Deploying Wavelength
 
-The app runs as a **single service**: the Node/Socket.IO server serves the
-built React client, so one URL/port hosts everything.
+The app runs as a **single service**: the Node/Socket.IO server serves the built
+React client, so one URL hosts everything. Persistence (accounts, playlists,
+history) lives in a **hosted Turso database**, so the compute host can be a free,
+disk-less tier and accounts still survive every redeploy — and are reachable from
+any device.
 
 ## Required environment variables
 
 | Var | Value | Notes |
 |-----|-------|-------|
-| `JWT_SECRET` | a long random string | **Required** — the server won't start without it. Generate one: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
+| `JWT_SECRET` | a long random string | **Required.** Generate: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
 | `COOKIE_SECURE` | `true` | Set on any HTTPS host so the login cookie gets the Secure flag. |
+| `DATABASE_URL` | `libsql://<db>.turso.io` | Your Turso database URL (see step 1). |
+| `DATABASE_AUTH_TOKEN` | Turso token | Auth token for the database. |
 | `PORT` | (host-provided) | Most hosts set this automatically; the server reads it. |
-| `DB_PATH` | e.g. `/data/wavelength.sqlite` | Put on a **persistent volume** to keep accounts/playlists/history across restarts. Without a volume the data is ephemeral (guest rooms still work fully). |
 
-## Option 1 — Fly.io + persistent volume (accounts survive redeploys)
+Without `DATABASE_URL` the server falls back to a local SQLite file (fine for dev; ephemeral in the cloud). Guest rooms work regardless of the database.
 
-The repo ships a `fly.toml` (one machine + a `/data` volume). Steps:
-
-```bash
-# 1. Install flyctl and sign in (opens a browser)
-curl -L https://fly.io/install.sh | sh
-fly auth login          # or: fly auth signup
-
-# 2. Create the app from the bundled fly.toml (pick a unique name)
-cd /path/to/wavelength
-fly launch --copy-config --no-deploy --name wavelength-<yourname> --region bom
-
-# 3. Create the persistent volume the config expects (same name + region)
-fly volumes create wl_data --size 1 --region bom
-
-# 4. Set the required secret (generate a strong one)
-fly secrets set JWT_SECRET="$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")"
-
-# 5. Deploy
-fly deploy
-```
-
-After it deploys, `fly open` (or the printed `https://wavelength-<yourname>.fly.dev` URL) is your shareable link. `COOKIE_SECURE` and `DB_PATH` are already set in `fly.toml`; the volume keeps accounts/playlists/history across every redeploy.
-
-Notes:
-- `fly launch` may ask to tweak settings — keep the volume mount, `internal_port = 3001`, and the env block.
-- The machine stops when idle (first visit after that is a short cold start; live rooms are in memory so start a fresh room). Accounts on the volume are unaffected.
-- To keep it always-on instead, set `min_machines_running = 1` and `auto_stop_machines = "off"` in `fly.toml`.
-
-## Option 2 — Render (easiest, but accounts reset on redeploy)
-
-1. Push is already done — the repo is `Ashishbani/Wavelength` on `main`.
-2. Go to https://render.com and sign up / log in with GitHub.
-3. **New +  →  Web Service** → connect the `Ashishbani/Wavelength` repo (authorize Render to read it).
-4. Render detects the **Dockerfile** → Language = **Docker**. Pick the nearest region and the **Free** instance.
-5. Under **Environment**, add:
-   - `JWT_SECRET` = your generated secret
-   - `COOKIE_SECURE` = `true`
-6. **Create Web Service.** Render builds the image and deploys; you get a URL like `https://wavelength-xxxx.onrender.com`.
-7. Share that URL. Both people open it → create/join a room → listen in sync.
-
-**Free-tier caveats:** the service sleeps after ~15 min idle (first hit after that is a slow cold start, and in-memory rooms are lost on sleep — just start a fresh room), and there's **no persistent disk**, so accounts/playlists/history reset on each deploy/restart. Guest rooms work fully. For persistence, add a paid **Disk** mounted at `/data`.
-
-## Option 3 — Railway (persistent data, web UI)
-
-New Project → Deploy from GitHub repo → add a **Volume** mounted at `/data` → set `JWT_SECRET` and `COOKIE_SECURE=true`. Persists accounts like Fly, via a point-and-click UI.
-
-## Local production preview
+## Step 1 — Create the free Turso database
 
 ```bash
-cp .env.example .env   # set a JWT_SECRET
-JWT_SECRET=... COOKIE_SECURE=false npm run serve   # builds client + serves on :3001
+# Install the Turso CLI and sign up (no credit card)
+curl -sSfL https://get.tur.so/install.sh | bash
+turso auth signup
+
+# Create a database and grab its credentials
+turso db create wavelength
+turso db show wavelength --url          # -> DATABASE_URL (libsql://…)
+turso db tokens create wavelength       # -> DATABASE_AUTH_TOKEN
 ```
+
+Keep the URL and token for step 2. (The schema creates itself on first boot — no manual migration needed.)
+
+## Step 2 — Deploy the app on Render (free, no card)
+
+1. Go to https://render.com and sign up / log in **with GitHub**.
+2. **New +  →  Web Service** → connect the `Ashishbani/Wavelength` repo.
+3. Render detects the **Dockerfile** → Language = **Docker**. Pick the nearest region and the **Free** instance.
+4. Under **Environment**, add: `JWT_SECRET`, `COOKIE_SECURE=true`, `DATABASE_URL`, `DATABASE_AUTH_TOKEN`.
+5. **Create Web Service.** You get a URL like `https://wavelength-xxxx.onrender.com` — that's the link to share.
+
+**Free-tier note:** the service sleeps after ~15 min idle (first hit after that is a slow cold start, and in-memory live rooms reset on sleep — just start a fresh room). Accounts/playlists/history are in Turso, so they are unaffected. Koyeb's free tier works the same way if you prefer it.
+
+## Local development
+
+```bash
+cp .env.example .env      # set JWT_SECRET; leave DATABASE_URL empty to use a local file
+npm run dev:server        # http://localhost:3001
+npm run dev:client        # http://localhost:5173
+```
+
+To preview the single-origin production build locally:
+
+```bash
+JWT_SECRET=dev-secret COOKIE_SECURE=false npm run serve   # builds client + serves on :3001
+```
+
+To develop against your Turso database instead of a local file, set `DATABASE_URL` and `DATABASE_AUTH_TOKEN` in `.env`.

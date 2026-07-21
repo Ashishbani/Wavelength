@@ -13,7 +13,7 @@ function connect(port: number): Promise<ClientSocket> {
 }
 
 describe('socket server', () => {
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
   const sockets: ClientSocket[] = [];
 
   afterEach(async () => {
@@ -23,7 +23,7 @@ describe('socket server', () => {
   });
 
   it('creates a room and a second client can join it', async () => {
-    server = createServer(0);
+    server = await createServer(0);
     const port = (server.httpServer.address() as { port: number }).port;
 
     const host = await connect(port);
@@ -45,7 +45,7 @@ describe('socket server', () => {
   });
 
   it('broadcasts host playback to guests', async () => {
-    server = createServer(0);
+    server = await createServer(0);
     const port = (server.httpServer.address() as { port: number }).port;
 
     const host = await connect(port);
@@ -71,7 +71,7 @@ describe('socket server', () => {
   });
 
   it('allows playback control from any member (collaborative)', async () => {
-    server = createServer(0);
+    server = await createServer(0);
     const port = (server.httpServer.address() as { port: number }).port;
 
     const host = await connect(port);

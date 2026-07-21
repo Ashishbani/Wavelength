@@ -13,8 +13,9 @@ FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app ./
-# Data lives here; mount a persistent volume at /data in your host.
-ENV DB_PATH=/data/wavelength.sqlite
+# Persistence lives in a hosted Turso database — set DATABASE_URL and
+# DATABASE_AUTH_TOKEN as env vars / secrets on the host. Without them the server
+# falls back to a local (ephemeral) SQLite file.
 ENV COOKIE_SECURE=true
 EXPOSE 3001
 CMD ["npm", "run", "start", "--workspace", "server"]

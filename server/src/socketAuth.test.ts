@@ -1,19 +1,18 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { io as ioc, type Socket } from 'socket.io-client';
-import { openDb, migrate } from './db/db.js';
+import { openDb } from './db/db.js';
 import { createServer } from './index.js';
 import { signToken } from './auth/token.js';
 import { COOKIE_NAME } from './auth/routes.js';
 
 describe('socket auth', () => {
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
   const sockets: Socket[] = [];
   afterEach(async () => { sockets.forEach((s) => s.close()); sockets.length = 0; await server.close(); });
 
-  function start() {
+  async function start() {
     const db = openDb(':memory:');
-    migrate(db);
-    server = createServer(0, db);
+    server = await createServer(0, db);
     return (server.httpServer.address() as { port: number }).port;
   }
 
@@ -28,7 +27,7 @@ describe('socket auth', () => {
   }
 
   it('sets userId for an authed socket and null for a guest', async () => {
-    const port = start();
+    const port = await start();
     const token = signToken({ userId: 'user-123' });
 
     const authed = await connect(port, `${COOKIE_NAME}=${token}`);

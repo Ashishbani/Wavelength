@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { openDb, migrate } from '../db/db.js';
+import { openDb } from '../db/db.js';
 import { createServer } from '../index.js';
 
 async function registerAndCookie(base: string): Promise<string> {
@@ -11,22 +11,22 @@ async function registerAndCookie(base: string): Promise<string> {
 }
 
 describe('room routes', () => {
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
   afterEach(async () => { await server.close(); });
-  function start() {
-    const db = openDb(':memory:'); migrate(db);
-    server = createServer(0, db);
+  async function start() {
+    const db = openDb(':memory:');
+    server = await createServer(0, db);
     return `http://localhost:${(server.httpServer.address() as { port: number }).port}`;
   }
 
   it('requires auth to create a saved room', async () => {
-    const base = start();
+    const base = await start();
     const res = await fetch(`${base}/api/rooms`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'X' }) });
     expect(res.status).toBe(401);
   });
 
   it('creates and lists a saved room for the owner', async () => {
-    const base = start();
+    const base = await start();
     const cookie = await registerAndCookie(base);
     const create = await fetch(`${base}/api/rooms`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'Friday Jams' }) });
     expect(create.status).toBe(200);

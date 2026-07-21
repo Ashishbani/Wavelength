@@ -1,18 +1,18 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { io as ioc, type Socket } from 'socket.io-client';
-import { openDb, migrate } from './db/db.js';
+import { openDb } from './db/db.js';
 import { createServer } from './index.js';
 import type { CreateJoinResult, RoomState, PlaybackState } from '@wavelength/shared';
 
 // Evidence for the "queue not reflected after adding a second link" report.
 describe('queue reflection', () => {
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
   const sockets: Socket[] = [];
   afterEach(async () => { sockets.forEach((s) => s.close()); sockets.length = 0; await server.close(); });
 
-  function start() {
-    const db = openDb(':memory:'); migrate(db);
-    server = createServer(0, db);
+  async function start() {
+    const db = openDb(':memory:');
+    server = await createServer(0, db);
     return (server.httpServer.address() as { port: number }).port;
   }
   function connect(port: number): Promise<Socket> {
@@ -23,7 +23,7 @@ describe('queue reflection', () => {
   }
 
   it('reflects a second queued track while the first is playing', async () => {
-    const port = start();
+    const port = await start();
     const host = await connect(port); sockets.push(host);
 
     const created = await new Promise<CreateJoinResult>((r) => host.emit('room:create', { name: 'Alice' }, r));

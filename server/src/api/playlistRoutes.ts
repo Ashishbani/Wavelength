@@ -9,25 +9,26 @@ function requireAuth(req: Request): string | null {
 export function createPlaylistRouter(playlistRepo: ReturnType<typeof createPlaylistRepo>): Router {
   const router = Router();
 
-  router.post('/', (req, res) => {
+  router.post('/', async (req, res) => {
     const userId = requireAuth(req);
     if (!userId) return res.status(401).json({ error: 'Log in to save playlists.' });
     const parsed = createPlaylistSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid playlist.' });
-    const pl = playlistRepo.create(userId, parsed.data.name, parsed.data.items);
+    const pl = await playlistRepo.create(userId, parsed.data.name, parsed.data.items);
     res.json({ id: pl.id, name: pl.name, items: pl.items });
   });
 
-  router.get('/', (req, res) => {
+  router.get('/', async (req, res) => {
     const userId = requireAuth(req);
     if (!userId) return res.status(401).json({ error: 'Log in to view playlists.' });
-    res.json({ playlists: playlistRepo.listByOwner(userId).map((p) => ({ id: p.id, name: p.name, items: p.items })) });
+    const playlists = await playlistRepo.listByOwner(userId);
+    res.json({ playlists: playlists.map((p) => ({ id: p.id, name: p.name, items: p.items })) });
   });
 
-  router.delete('/:id', (req, res) => {
+  router.delete('/:id', async (req, res) => {
     const userId = requireAuth(req);
     if (!userId) return res.status(401).json({ error: 'Log in to delete playlists.' });
-    const ok = playlistRepo.deleteById(req.params.id, userId);
+    const ok = await playlistRepo.deleteById(req.params.id, userId);
     if (!ok) return res.status(404).json({ error: 'Playlist not found.' });
     res.json({ ok: true });
   });

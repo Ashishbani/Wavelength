@@ -22,27 +22,28 @@ function toRoom(row: RoomRow): SavedRoom {
 }
 
 export function createRoomRepo(db: DB) {
-  const insert = db.prepare('INSERT INTO saved_rooms (id, owner_user_id, code, name, created_at) VALUES (?, ?, ?, ?, ?)');
-  const byOwner = db.prepare('SELECT * FROM saved_rooms WHERE owner_user_id = ? ORDER BY created_at DESC');
-  const byCode = db.prepare('SELECT * FROM saved_rooms WHERE code = ?');
-  const del = db.prepare('DELETE FROM saved_rooms WHERE code = ? AND owner_user_id = ?');
-
   return {
-    create(ownerUserId: string, code: string, name: string): SavedRoom {
+    async create(ownerUserId: string, code: string, name: string): Promise<SavedRoom> {
       const id = randomUUID();
       const createdAt = Date.now();
-      insert.run(id, ownerUserId, code, name, createdAt);
+      await db.execute({
+        sql: 'INSERT INTO saved_rooms (id, owner_user_id, code, name, created_at) VALUES (?, ?, ?, ?, ?)',
+        args: [id, ownerUserId, code, name, createdAt],
+      });
       return { id, ownerUserId, code, name, createdAt };
     },
-    listByOwner(ownerUserId: string): SavedRoom[] {
-      return (byOwner.all(ownerUserId) as RoomRow[]).map(toRoom);
+    async listByOwner(ownerUserId: string): Promise<SavedRoom[]> {
+      const rs = await db.execute({ sql: 'SELECT * FROM saved_rooms WHERE owner_user_id = ? ORDER BY created_at DESC', args: [ownerUserId] });
+      return (rs.rows as unknown as RoomRow[]).map(toRoom);
     },
-    findByCode(code: string): SavedRoom | null {
-      const row = byCode.get(code) as RoomRow | undefined;
+    async findByCode(code: string): Promise<SavedRoom | null> {
+      const rs = await db.execute({ sql: 'SELECT * FROM saved_rooms WHERE code = ?', args: [code] });
+      const row = rs.rows[0] as unknown as RoomRow | undefined;
       return row ? toRoom(row) : null;
     },
-    deleteByCode(code: string, ownerUserId: string): boolean {
-      return del.run(code, ownerUserId).changes > 0;
+    async deleteByCode(code: string, ownerUserId: string): Promise<boolean> {
+      const rs = await db.execute({ sql: 'DELETE FROM saved_rooms WHERE code = ? AND owner_user_id = ?', args: [code, ownerUserId] });
+      return rs.rowsAffected > 0;
     },
   };
 }

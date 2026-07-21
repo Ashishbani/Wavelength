@@ -8,52 +8,52 @@ describe('friendRepo', () => {
   let friends: ReturnType<typeof createFriendRepo>;
   let alice: string;
   let bob: string;
-  beforeEach(() => {
+  beforeEach(async () => {
     db = openDb(':memory:');
-    migrate(db);
+    await migrate(db);
     const users = createUserRepo(db);
-    alice = users.create('a@b.com', 'h', 'Alice').id;
-    bob = users.create('b@b.com', 'h', 'Bob').id;
-    users.setUsername(alice, 'alice');
-    users.setUsername(bob, 'bob');
+    alice = (await users.create('a@b.com', 'h', 'Alice')).id;
+    bob = (await users.create('b@b.com', 'h', 'Bob')).id;
+    await users.setUsername(alice, 'alice');
+    await users.setUsername(bob, 'bob');
     friends = createFriendRepo(db);
   });
 
-  it('sends, lists, and accepts a request into a friendship', () => {
-    friends.sendRequest(alice, bob);
-    expect(friends.listOutgoing(alice)).toHaveLength(1);
-    const incoming = friends.listIncoming(bob);
+  it('sends, lists, and accepts a request into a friendship', async () => {
+    await friends.sendRequest(alice, bob);
+    expect(await friends.listOutgoing(alice)).toHaveLength(1);
+    const incoming = await friends.listIncoming(bob);
     expect(incoming[0].username).toBe('alice');
-    expect(friends.accept(incoming[0].id, bob)).toBe(true);
-    expect(friends.areFriends(alice, bob)).toBe(true);
-    expect(friends.listFriends(alice).map((f) => f.userId)).toEqual([bob]);
-    expect(friends.friendIds(bob)).toEqual([alice]);
+    expect(await friends.accept(incoming[0].id, bob)).toBe(true);
+    expect(await friends.areFriends(alice, bob)).toBe(true);
+    expect((await friends.listFriends(alice)).map((f) => f.userId)).toEqual([bob]);
+    expect(await friends.friendIds(bob)).toEqual([alice]);
   });
 
-  it('rejects self-request and duplicate/reverse edges', () => {
-    expect(() => friends.sendRequest(alice, alice)).toThrow('SELF');
-    friends.sendRequest(alice, bob);
-    expect(() => friends.sendRequest(alice, bob)).toThrow('EDGE_EXISTS');
-    expect(() => friends.sendRequest(bob, alice)).toThrow('EDGE_EXISTS');
+  it('rejects self-request and duplicate/reverse edges', async () => {
+    await expect(friends.sendRequest(alice, alice)).rejects.toThrow('SELF');
+    await friends.sendRequest(alice, bob);
+    await expect(friends.sendRequest(alice, bob)).rejects.toThrow('EDGE_EXISTS');
+    await expect(friends.sendRequest(bob, alice)).rejects.toThrow('EDGE_EXISTS');
   });
 
-  it('only the addressee can accept', () => {
-    friends.sendRequest(alice, bob);
-    const id = friends.listIncoming(bob)[0].id;
-    expect(friends.accept(id, alice)).toBe(false);
-    expect(friends.accept(id, bob)).toBe(true);
+  it('only the addressee can accept', async () => {
+    await friends.sendRequest(alice, bob);
+    const id = (await friends.listIncoming(bob))[0].id;
+    expect(await friends.accept(id, alice)).toBe(false);
+    expect(await friends.accept(id, bob)).toBe(true);
   });
 
-  it('declines a request and allows unfriending', () => {
-    friends.sendRequest(alice, bob);
-    const id = friends.listIncoming(bob)[0].id;
-    expect(friends.decline(id, bob)).toBe(true);
-    expect(friends.areFriends(alice, bob)).toBe(false);
+  it('declines a request and allows unfriending', async () => {
+    await friends.sendRequest(alice, bob);
+    const id = (await friends.listIncoming(bob))[0].id;
+    expect(await friends.decline(id, bob)).toBe(true);
+    expect(await friends.areFriends(alice, bob)).toBe(false);
 
-    friends.sendRequest(alice, bob);
-    const id2 = friends.listIncoming(bob)[0].id;
-    friends.accept(id2, bob);
-    expect(friends.unfriend(bob, alice)).toBe(true);
-    expect(friends.areFriends(alice, bob)).toBe(false);
+    await friends.sendRequest(alice, bob);
+    const id2 = (await friends.listIncoming(bob))[0].id;
+    await friends.accept(id2, bob);
+    expect(await friends.unfriend(bob, alice)).toBe(true);
+    expect(await friends.areFriends(alice, bob)).toBe(false);
   });
 });

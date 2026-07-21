@@ -38,7 +38,7 @@ export function createAuthRouter(userRepo: ReturnType<typeof createUserRepo>): R
     const { email, password, displayName } = parsed.data;
     try {
       const hash = await hashPassword(password);
-      const user = userRepo.create(email.toLowerCase(), hash, displayName);
+      const user = await userRepo.create(email.toLowerCase(), hash, displayName);
       res.cookie(COOKIE_NAME, signToken({ userId: user.id }), cookieOptions());
       res.json({ id: user.id, email: user.email, displayName: user.displayName, username: user.username });
     } catch (e) {
@@ -52,7 +52,7 @@ export function createAuthRouter(userRepo: ReturnType<typeof createUserRepo>): R
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid login details.' });
     const { email, password } = parsed.data;
-    const user = userRepo.findByEmail(email.toLowerCase());
+    const user = await userRepo.findByEmail(email.toLowerCase());
     const ok = user ? await verifyPassword(password, user.passwordHash) : false;
     if (!user || !ok) return res.status(401).json({ error: 'Invalid email or password' });
     res.cookie(COOKIE_NAME, signToken({ userId: user.id }), cookieOptions());
@@ -64,10 +64,10 @@ export function createAuthRouter(userRepo: ReturnType<typeof createUserRepo>): R
     res.json({ ok: true });
   });
 
-  router.get('/me', (req, res) => {
+  router.get('/me', async (req, res) => {
     const userId = (req as Request & { userId?: string }).userId;
     if (!userId) return res.json({ user: null });
-    const user = userRepo.findById(userId);
+    const user = await userRepo.findById(userId);
     res.json({ user: user ? { id: user.id, email: user.email, displayName: user.displayName, username: user.username } : null });
   });
 

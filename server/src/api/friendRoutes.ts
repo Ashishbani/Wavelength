@@ -15,33 +15,34 @@ export function createFriendRouter(
   const router = Router();
 
   // Require the caller to have a handle before using social features.
-  function requireHandle(req: Request, res: Response): { userId: string; username: string } | null {
+  async function requireHandle(req: Request, res: Response): Promise<{ userId: string; username: string } | null> {
     const userId = authed(req);
     if (!userId) { res.status(401).json({ error: 'Log in first.' }); return null; }
-    const me = userRepo.findById(userId);
+    const me = await userRepo.findById(userId);
     if (!me?.username) { res.status(409).json({ error: 'Choose a handle first.', code: 'NEEDS_HANDLE' }); return null; }
     return { userId, username: me.username };
   }
 
-  router.get('/', (req, res) => {
-    const ctx = requireHandle(req, res); if (!ctx) return;
-    res.json({ friends: friendRepo.listFriends(ctx.userId) });
+  router.get('/', async (req, res) => {
+    const ctx = await requireHandle(req, res); if (!ctx) return;
+    res.json({ friends: await friendRepo.listFriends(ctx.userId) });
   });
 
-  router.get('/requests', (req, res) => {
-    const ctx = requireHandle(req, res); if (!ctx) return;
-    res.json({ incoming: friendRepo.listIncoming(ctx.userId), outgoing: friendRepo.listOutgoing(ctx.userId) });
+  router.get('/requests', async (req, res) => {
+    const ctx = await requireHandle(req, res); if (!ctx) return;
+    const [incoming, outgoing] = await Promise.all([friendRepo.listIncoming(ctx.userId), friendRepo.listOutgoing(ctx.userId)]);
+    res.json({ incoming, outgoing });
   });
 
-  router.post('/requests', (req, res) => {
-    const ctx = requireHandle(req, res); if (!ctx) return;
+  router.post('/requests', async (req, res) => {
+    const ctx = await requireHandle(req, res); if (!ctx) return;
     const parsed = friendRequestSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Invalid handle.' });
-    const target = userRepo.findByUsername(parsed.data.username);
+    const target = await userRepo.findByUsername(parsed.data.username);
     if (!target) return res.status(404).json({ error: 'No user with that handle.' });
     try {
-      friendRepo.sendRequest(ctx.userId, target.id);
-      const me = userRepo.findById(ctx.userId)!;
+      await friendRepo.sendRequest(ctx.userId, target.id);
+      const me = (await userRepo.findById(ctx.userId))!;
       onRequest(target.id, me.username ?? '', me.displayName);
       res.json({ ok: true });
     } catch (e) {
@@ -52,21 +53,21 @@ export function createFriendRouter(
     }
   });
 
-  router.post('/requests/:id/accept', (req, res) => {
-    const ctx = requireHandle(req, res); if (!ctx) return;
-    if (!friendRepo.accept(req.params.id, ctx.userId)) return res.status(404).json({ error: 'Request not found.' });
+  router.post('/requests/:id/accept', async (req, res) => {
+    const ctx = await requireHandle(req, res); if (!ctx) return;
+    if (!(await friendRepo.accept(req.params.id, ctx.userId))) return res.status(404).json({ error: 'Request not found.' });
     res.json({ ok: true });
   });
 
-  router.post('/requests/:id/decline', (req, res) => {
-    const ctx = requireHandle(req, res); if (!ctx) return;
-    if (!friendRepo.decline(req.params.id, ctx.userId)) return res.status(404).json({ error: 'Request not found.' });
+  router.post('/requests/:id/decline', async (req, res) => {
+    const ctx = await requireHandle(req, res); if (!ctx) return;
+    if (!(await friendRepo.decline(req.params.id, ctx.userId))) return res.status(404).json({ error: 'Request not found.' });
     res.json({ ok: true });
   });
 
-  router.delete('/:userId', (req, res) => {
-    const ctx = requireHandle(req, res); if (!ctx) return;
-    if (!friendRepo.unfriend(ctx.userId, req.params.userId)) return res.status(404).json({ error: 'Not friends.' });
+  router.delete('/:userId', async (req, res) => {
+    const ctx = await requireHandle(req, res); if (!ctx) return;
+    if (!(await friendRepo.unfriend(ctx.userId, req.params.userId))) return res.status(404).json({ error: 'Not friends.' });
     res.json({ ok: true });
   });
 

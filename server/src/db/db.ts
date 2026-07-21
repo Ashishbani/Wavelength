@@ -1,23 +1,29 @@
-import Database from 'better-sqlite3';
+import { createClient, type Client } from '@libsql/client';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export type DB = Database.Database;
+export type DB = Client;
 
-export function openDb(dbPath = process.env.DB_PATH ?? 'wavelength.sqlite'): DB {
-  // Ensure the parent directory exists (e.g. a mounted /data volume on a host).
-  if (dbPath !== ':memory:') {
-    const dir = path.dirname(path.resolve(dbPath));
-    fs.mkdirSync(dir, { recursive: true });
+/**
+ * Open a libSQL client.
+ *  - Hosted (Turso): set DATABASE_URL (libsql://…) and DATABASE_AUTH_TOKEN.
+ *  - Local dev: a file: URL (default `file:wavelength.sqlite`, or DB_PATH).
+ *  - Tests: pass ':memory:'.
+ */
+export function openDb(url?: string): DB {
+  const resolved = url ?? process.env.DATABASE_URL ?? `file:${process.env.DB_PATH ?? 'wavelength.sqlite'}`;
+  const authToken = process.env.DATABASE_AUTH_TOKEN;
+  // For a local file DB, make sure the parent directory exists.
+  if (resolved.startsWith('file:')) {
+    const file = resolved.slice('file:'.length);
+    if (file && file !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
   }
-  const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  return db;
+  return createClient(authToken ? { url: resolved, authToken } : { url: resolved });
 }
 
-export function migrate(db: DB): void {
-  db.exec(`
+/** Create tables and indexes. Idempotent — safe to run on every startup. */
+export async function migrate(db: DB): Promise<void> {
+  await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
@@ -68,9 +74,9 @@ export function migrate(db: DB): void {
     );
   `);
 
-  const cols = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
-  if (!cols.some((c) => c.name === 'username')) {
-    db.exec('ALTER TABLE users ADD COLUMN username TEXT');
+  const cols = await db.execute('PRAGMA table_info(users)');
+  if (!cols.rows.some((c) => (c as { name?: string }).name === 'username')) {
+    await db.execute('ALTER TABLE users ADD COLUMN username TEXT');
   }
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)');
+  await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)');
 }

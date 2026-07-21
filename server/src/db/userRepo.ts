@@ -23,46 +23,44 @@ interface UserRow {
 }
 
 export function createUserRepo(db: DB) {
-  const insert = db.prepare(
-    'INSERT INTO users (id, email, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)',
-  );
-  const byEmail = db.prepare('SELECT * FROM users WHERE email = ?');
-  const byId = db.prepare('SELECT * FROM users WHERE id = ?');
-  const byUsername = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE');
-  const setName = db.prepare('UPDATE users SET username = ? WHERE id = ?');
-
   function toUser(row: UserRow): User {
     return { id: row.id, email: row.email, displayName: row.display_name, username: row.username ?? null, createdAt: row.created_at };
   }
 
   return {
-    create(email: string, passwordHash: string, displayName: string): User {
+    async create(email: string, passwordHash: string, displayName: string): Promise<User> {
       const id = randomUUID();
       const createdAt = Date.now();
       try {
-        insert.run(id, email, passwordHash, displayName, createdAt);
+        await db.execute({
+          sql: 'INSERT INTO users (id, email, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)',
+          args: [id, email, passwordHash, displayName, createdAt],
+        });
       } catch (e) {
         if (String((e as Error).message).includes('UNIQUE')) throw new Error('EMAIL_TAKEN');
         throw e;
       }
       return { id, email, displayName, username: null, createdAt };
     },
-    findByEmail(email: string): UserWithHash | null {
-      const row = byEmail.get(email) as UserRow | undefined;
+    async findByEmail(email: string): Promise<UserWithHash | null> {
+      const rs = await db.execute({ sql: 'SELECT * FROM users WHERE email = ?', args: [email] });
+      const row = rs.rows[0] as unknown as UserRow | undefined;
       if (!row) return null;
       return { ...toUser(row), passwordHash: row.password_hash };
     },
-    findById(id: string): User | null {
-      const row = byId.get(id) as UserRow | undefined;
+    async findById(id: string): Promise<User | null> {
+      const rs = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [id] });
+      const row = rs.rows[0] as unknown as UserRow | undefined;
       return row ? toUser(row) : null;
     },
-    findByUsername(username: string): User | null {
-      const row = byUsername.get(username.toLowerCase()) as UserRow | undefined;
+    async findByUsername(username: string): Promise<User | null> {
+      const rs = await db.execute({ sql: 'SELECT * FROM users WHERE username = ? COLLATE NOCASE', args: [username.toLowerCase()] });
+      const row = rs.rows[0] as unknown as UserRow | undefined;
       return row ? toUser(row) : null;
     },
-    setUsername(userId: string, username: string): void {
+    async setUsername(userId: string, username: string): Promise<void> {
       try {
-        setName.run(username.toLowerCase(), userId);
+        await db.execute({ sql: 'UPDATE users SET username = ? WHERE id = ?', args: [username.toLowerCase(), userId] });
       } catch (e) {
         if (String((e as Error).message).includes('UNIQUE')) throw new Error('USERNAME_TAKEN');
         throw e;

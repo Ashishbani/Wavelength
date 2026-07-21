@@ -36,8 +36,9 @@ const MAX_CHAT_LEN = 500;
 // single-origin deploy (client served by this server) and for tunnels/domains.
 const CLIENT_ORIGIN: string | boolean = process.env.CLIENT_ORIGIN ?? true;
 
-export function createServer(port = 3001, injectedDb?: DB) {
-  const db = injectedDb ?? (() => { const d = openDb(); migrate(d); return d; })();
+export async function createServer(port = 3001, injectedDb?: DB) {
+  const db = injectedDb ?? openDb();
+  await migrate(db); // idempotent — safe whether the db is fresh or injected/pre-migrated
   const userRepo = createUserRepo(db);
   const roomRepo = createRoomRepo(db);
   const playlistRepo = createPlaylistRepo(db);
@@ -80,11 +81,14 @@ export function createServer(port = 3001, injectedDb?: DB) {
     io.to(`user:${addresseeId}`).emit('friend:requestReceived', { fromUsername, fromDisplayName });
   }));
 
-  function pushPresenceToFriends(userId: string) {
-    const info: PresenceInfo = { userId, ...presence.getPresence(userId) };
-    for (const fid of friendRepo.friendIds(userId)) {
-      if (presence.isOnline(fid)) io.to(`user:${fid}`).emit('presence:update', info);
-    }
+  // Best-effort: presence updates should never crash a handler if the DB hiccups.
+  async function pushPresenceToFriends(userId: string) {
+    try {
+      const info: PresenceInfo = { userId, ...presence.getPresence(userId) };
+      for (const fid of await friendRepo.friendIds(userId)) {
+        if (presence.isOnline(fid)) io.to(`user:${fid}`).emit('presence:update', info);
+      }
+    } catch { /* presence is best-effort */ }
   }
 
   const LOBBY = 'lobby';
@@ -125,35 +129,36 @@ export function createServer(port = 3001, injectedDb?: DB) {
   }
 
   // Log a starting track into the history of every authenticated member of the room.
-  function logTrackStart(code: string, videoId: string | null, title: string) {
+  async function logTrackStart(code: string, videoId: string | null, title: string) {
     if (!videoId) return;
     const room = rooms.getRoom(code);
     if (!room) return;
     for (const member of room.members) {
       const memberSocket = io.sockets.sockets.get(member.id);
       const uid = memberSocket ? (memberSocket.data as { userId?: string }).userId : undefined;
-      if (uid) historyRepo.add(uid, videoId, title);
+      if (uid) { try { await historyRepo.add(uid, videoId, title); } catch { /* history is best-effort */ } }
     }
   }
 
   // Advance to the next queued track, broadcast, and log it to history.
-  function advanceAndLog(code: string) {
+  async function advanceAndLog(code: string) {
     const upcoming = rooms.getRoom(code)?.queue[0];
     const pb = rooms.advanceQueue(code, Date.now());
     io.to(code).emit('playback:update', pb);
-    if (pb.videoId) logTrackStart(code, pb.videoId, upcoming?.title ?? pb.videoId);
     const room = rooms.getRoom(code);
     if (room) io.to(code).emit('room:state', room);
     broadcastLobby();
+    if (pb.videoId) await logTrackStart(code, pb.videoId, upcoming?.title ?? pb.videoId);
   }
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     const uid = (socket.data as { userId?: string }).userId;
     if (uid) {
       socket.join(`user:${uid}`);
       presence.addSocket(uid, socket.id);
-      pushPresenceToFriends(uid);
-      const friends = friendRepo.friendIds(uid).map((fid): PresenceInfo => ({ userId: fid, ...presence.getPresence(fid) }));
+      void pushPresenceToFriends(uid);
+      const ids = await friendRepo.friendIds(uid).catch(() => [] as string[]);
+      const friends = ids.map((fid): PresenceInfo => ({ userId: fid, ...presence.getPresence(fid) }));
       socket.emit('presence:snapshot', { friends });
     }
 
@@ -168,11 +173,11 @@ export function createServer(port = 3001, injectedDb?: DB) {
       const state = rooms.createRoom(socket.id, clean, isPublic ?? true, seat);
       socket.join(state.code);
       cb({ ok: true, state, selfId: socket.id });
-      if (uid) { presence.setRoom(uid, state.code); pushPresenceToFriends(uid); }
+      if (uid) { presence.setRoom(uid, state.code); void pushPresenceToFriends(uid); }
       broadcastLobby();
     });
 
-    socket.on('room:join', ({ code, name, clientId }, cb: (r: CreateJoinResult) => void) => {
+    socket.on('room:join', async ({ code, name, clientId }, cb: (r: CreateJoinResult) => void) => {
       const clean = (name ?? '').trim().slice(0, 40);
       const upper = (code ?? '').trim().toUpperCase();
       if (!clean) return cb({ ok: false, error: 'Please enter a name.' });
@@ -192,7 +197,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
           }
         }
         let state;
-        if (!rooms.getRoom(upper) && roomRepo.findByCode(upper)) {
+        if (!rooms.getRoom(upper) && (await roomRepo.findByCode(upper))) {
           // Reactivate a saved room that has no live instance.
           state = rooms.createRoomWithCode(upper, socket.id, clean, true, seat);
         } else {
@@ -203,7 +208,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
         socket.join(upper);
         cb({ ok: true, state, selfId: socket.id });
         io.to(upper).emit('room:state', state);
-        if (uid) { presence.setRoom(uid, upper); pushPresenceToFriends(uid); }
+        if (uid) { presence.setRoom(uid, upper); void pushPresenceToFriends(uid); }
         broadcastLobby();
       } catch (e) {
         const msg = (e as Error).message;
@@ -240,7 +245,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
       hostAction((code) => io.to(code).emit('playback:sync', rooms.setPlayback(code, { positionSec }, Date.now()))),
     );
 
-    socket.on('queue:next', () => memberAction((code) => advanceAndLog(code)));
+    socket.on('queue:next', () => memberAction((code) => { void advanceAndLog(code); }));
 
     socket.on('queue:add', ({ videoId, title }) => {
       const room = rooms.getRoomByMember(socket.id);
@@ -249,7 +254,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
       const cleanTitle = (title ?? '').toString().trim().slice(0, 200) || videoId;
       const updated = rooms.addToQueue(room.code, { videoId, title: cleanTitle, addedBy: nameOf(socket.id, room.code) });
       io.to(room.code).emit('room:state', updated);
-      if (!updated.playback.videoId) advanceAndLog(room.code);
+      if (!updated.playback.videoId) void advanceAndLog(room.code);
     });
 
     // Anyone in the room may upvote a queued track; the queue reorders by votes.
@@ -274,17 +279,17 @@ export function createServer(port = 3001, injectedDb?: DB) {
       if (res.empty) scheduleDeletion(res.code);
       else io.to(res.code).emit('room:state', res.state);
       broadcastLobby();
-      if (uid) { presence.setRoom(uid, null); pushPresenceToFriends(uid); }
+      if (uid) { presence.setRoom(uid, null); void pushPresenceToFriends(uid); }
     });
 
-    socket.on('queue:loadPlaylist', (payload) => {
+    socket.on('queue:loadPlaylist', async (payload) => {
       const parsed = loadPlaylistSchema.safeParse(payload);
       if (!parsed.success) return;
       const room = rooms.getRoomByMember(socket.id);
       if (!room) return;
       const userId = (socket.data as { userId?: string }).userId;
       if (!userId) return;
-      const playlist = playlistRepo.findById(parsed.data.playlistId);
+      const playlist = await playlistRepo.findById(parsed.data.playlistId);
       if (!playlist || playlist.ownerUserId !== userId) return;
       const addedBy = nameOf(socket.id, room.code);
       for (const it of playlist.items) {
@@ -292,7 +297,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
       }
       const updated = rooms.getRoom(room.code);
       if (updated) io.to(room.code).emit('room:state', updated);
-      if (updated && !updated.playback.videoId) advanceAndLog(room.code);
+      if (updated && !updated.playback.videoId) void advanceAndLog(room.code);
     });
 
     socket.on('chat:send', ({ text }) => {
@@ -303,13 +308,13 @@ export function createServer(port = 3001, injectedDb?: DB) {
       io.to(room.code).emit('chat:message', { name: nameOf(socket.id, room.code), text: clean, ts: Date.now() });
     });
 
-    socket.on('invite:send', (payload) => {
+    socket.on('invite:send', async (payload) => {
       const parsed = inviteSchema.safeParse(payload);
       if (!parsed.success || !uid) return;
       const room = rooms.getRoomByMember(socket.id);
       if (!room) return;
-      if (!friendRepo.areFriends(uid, parsed.data.toUserId)) return;
-      const roomName = roomRepo.findByCode(room.code)?.name ?? null;
+      if (!(await friendRepo.areFriends(uid, parsed.data.toUserId))) return;
+      const roomName = (await roomRepo.findByCode(room.code))?.name ?? null;
       io.to(`user:${parsed.data.toUserId}`).emit('invite:receive', {
         fromDisplayName: nameOf(socket.id, room.code),
         code: room.code,
@@ -326,7 +331,7 @@ export function createServer(port = 3001, injectedDb?: DB) {
       }
       if (uid) {
         const { nowOffline } = presence.removeSocket(uid, socket.id);
-        if (nowOffline) pushPresenceToFriends(uid);
+        if (nowOffline) void pushPresenceToFriends(uid);
       }
     });
   });
@@ -358,13 +363,15 @@ export function createServer(port = 3001, injectedDb?: DB) {
 
 if (process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'))) {
   const port = Number(process.env.PORT) || 3001; // tolerate an empty PORT env
-  const server = createServer(port);
-  console.log(`Wavelength server listening on :${port}`);
-  const shutdown = (sig: string) => {
-    console.log(`Received ${sig}, shutting down…`);
-    server.close().then(() => process.exit(0));
-    setTimeout(() => process.exit(1), 10000).unref();
-  };
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  void (async () => {
+    const server = await createServer(port);
+    console.log(`Wavelength server listening on :${port}`);
+    const shutdown = (sig: string) => {
+      console.log(`Received ${sig}, shutting down…`);
+      server.close().then(() => process.exit(0));
+      setTimeout(() => process.exit(1), 10000).unref();
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+  })();
 }

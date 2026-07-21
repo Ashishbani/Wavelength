@@ -9,20 +9,20 @@ import { COOKIE_NAME } from './auth/routes.js';
 import type { CreateJoinResult, PresenceInfo } from '@wavelength/shared';
 
 describe('presence + invites over sockets', () => {
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
   const sockets: Socket[] = [];
   afterEach(async () => { sockets.forEach((s) => s.close()); sockets.length = 0; await server.close(); });
 
-  function seedFriends(db: DB): { alice: string; bob: string } {
+  async function seedFriends(db: DB): Promise<{ alice: string; bob: string }> {
     const users = createUserRepo(db);
     const friends = createFriendRepo(db);
-    const alice = users.create('a@b.com', 'h', 'Alice').id;
-    const bob = users.create('b@b.com', 'h', 'Bob').id;
-    users.setUsername(alice, 'alice');
-    users.setUsername(bob, 'bob');
-    friends.sendRequest(alice, bob);
-    const inc = friends.listIncoming(bob)[0];
-    friends.accept(inc.id, bob);
+    const alice = (await users.create('a@b.com', 'h', 'Alice')).id;
+    const bob = (await users.create('b@b.com', 'h', 'Bob')).id;
+    await users.setUsername(alice, 'alice');
+    await users.setUsername(bob, 'bob');
+    await friends.sendRequest(alice, bob);
+    const inc = (await friends.listIncoming(bob))[0];
+    await friends.accept(inc.id, bob);
     return { alice, bob };
   }
 
@@ -35,9 +35,9 @@ describe('presence + invites over sockets', () => {
   }
 
   it('notifies a friend when the other joins a room, and delivers invites', async () => {
-    const db = openDb(':memory:'); migrate(db);
-    const { alice, bob } = seedFriends(db);
-    server = createServer(0, db);
+    const db = openDb(':memory:'); await migrate(db);
+    const { alice, bob } = await seedFriends(db);
+    server = await createServer(0, db);
     const port = (server.httpServer.address() as { port: number }).port;
 
     const aSock = await connect(port, alice); sockets.push(aSock);
