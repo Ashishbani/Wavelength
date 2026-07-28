@@ -13,6 +13,9 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
+  // True when the reset flow inherited the email from the login form — it's
+  // shown as text, not asked for again.
+  const [emailLocked, setEmailLocked] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -29,11 +32,13 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   function goForgot() {
     setMode('forgot');
     setPassword(''); setCode('');
+    setEmailLocked(!!email.trim());
     setCodeSent(false); setError(''); setNotice('');
   }
   function backToLogin() {
     setMode('login');
     setPassword(''); setCode('');
+    setEmailLocked(false);
     setCodeSent(false); setError(''); setNotice('');
   }
 
@@ -109,8 +114,15 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
                   <button className="back-btn" onClick={backToLogin} aria-label="Back to log in" title="Back to log in">‹</button>
                   <p className="form-lead">Reset your password</p>
                 </div>
-                <input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !codeSent) sendCode(); }} />
+                {emailLocked ? (
+                  <p className="muted reset-to">
+                    The code goes to <b>{email}</b>{' '}
+                    <button className="link" onClick={() => { setEmailLocked(false); setCodeSent(false); }}>change</button>
+                  </p>
+                ) : (
+                  <input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !codeSent) sendCode(); }} />
+                )}
                 {!codeSent ? (
                   <button className="primary" onClick={sendCode} disabled={busy || !email}>
                     {busy ? 'Sending…' : 'Email me a code'}
@@ -143,7 +155,11 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
                   onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
                 <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
-                <button className="primary" onClick={submit} disabled={busy}>{mode === 'login' ? 'Log in' : 'Create account'}</button>
+                <button
+                  className="primary"
+                  onClick={submit}
+                  disabled={busy || !email.trim() || !password || (mode === 'register' && !displayName.trim())}
+                >{mode === 'login' ? 'Log in' : 'Create account'}</button>
                 {error && <p className="error">{error}</p>}
                 {mode === 'login' && error && (
                   <button className="reset-cta" onClick={goForgot}>Forgot your password? Reset it with an email code →</button>

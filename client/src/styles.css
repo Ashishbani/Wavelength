@@ -253,6 +253,7 @@ button.link:hover { background: none; filter: brightness(1.2); }
   background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
 }
 .back-btn:hover { color: var(--text); border-color: var(--border-strong); }
+.reset-to { margin: 0; font-size: 13px; }
 .reset-cta {
   width: 100%; text-align: center; padding: 10px 12px; font-size: 13px;
   background: rgba(139, 92, 255, 0.12); border: 1px solid rgba(139, 92, 255, 0.4);
