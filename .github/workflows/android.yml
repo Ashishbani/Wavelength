@@ -12,13 +12,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -30,13 +30,22 @@ jobs:
       - name: Bake the server URL into the app
         working-directory: mobile
         env:
-          APP_URL: ${{ inputs.app_url }}
+          RAW_URL: ${{ inputs.app_url }}
         run: |
+          # Normalize the input: trim whitespace, drop a trailing slash, and
+          # add https:// if the scheme was omitted.
+          APP_URL="$(printf '%s' "$RAW_URL" | tr -d '[:space:]')"
+          APP_URL="${APP_URL%/}"
           case "$APP_URL" in
             https://*) ;;
-            *) echo "app_url must start with https://" >&2; exit 1 ;;
+            http://*) echo "::error::Use the https:// address (got: $APP_URL)"; exit 1 ;;
+            '') echo "::error::app_url input is empty"; exit 1 ;;
+            *) APP_URL="https://$APP_URL" ;;
           esac
-          npx cap sync android
+          echo "Building the app shell for: $APP_URL"
+          APP_URL="$APP_URL" npx cap sync android
+          echo "Baked native config:"
+          cat android/app/src/main/assets/capacitor.config.json
 
       - name: Build debug APK
         working-directory: mobile/android
