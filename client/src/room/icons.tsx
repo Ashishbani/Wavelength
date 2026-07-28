@@ -38,6 +38,13 @@ export const WaveIcon = ({ size = 16 }: { size?: number }) => (
 export const EqBars = ({ className, style }: { className: string; style?: CSSProperties }) => (
   <span className={className} style={style}><span /><span /><span /><span /><span /></span>
 );
+// Heart — favourite. Filled when saved, outline when not.
+export const HeartIcon = ({ filled = false, size = 16 }: { filled?: boolean; size?: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={filled ? 'currentColor' : 'none'}
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20.8 8.6a5 5 0 0 0-8.8-3.2 5 5 0 0 0-8.8 3.2c0 5 8.8 10.4 8.8 10.4s8.8-5.4 8.8-10.4z" />
+  </svg>
+);
 // Chain link — invite/share.
 export const LinkIcon = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

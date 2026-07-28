@@ -23,6 +23,7 @@ import { createHistoryRepo } from './db/historyRepo.js';
 import { createFriendRepo } from './db/friendRepo.js';
 import { createLibraryRepo } from './db/libraryRepo.js';
 import { createResetRepo } from './db/resetRepo.js';
+import { createFavouriteRepo } from './db/favouriteRepo.js';
 import { createMailer, type SendMail } from './auth/mailer.js';
 import { PresenceRegistry } from './presence/presenceRegistry.js';
 import { createAuthRouter, COOKIE_NAME } from './auth/routes.js';
@@ -32,6 +33,7 @@ import { createHistoryRouter } from './api/historyRoutes.js';
 import { createAccountRouter } from './api/accountRoutes.js';
 import { createFriendRouter } from './api/friendRoutes.js';
 import { createLibraryRouter } from './api/libraryRoutes.js';
+import { createFavouriteRouter } from './api/favouriteRoutes.js';
 import { verifyToken } from './auth/token.js';
 import { loadPlaylistSchema, inviteSchema } from './auth/validators.js';
 
@@ -51,6 +53,7 @@ export async function createServer(port = 3001, injectedDb?: DB, options?: { sen
   const friendRepo = createFriendRepo(db);
   const libraryRepo = createLibraryRepo(db);
   const resetRepo = createResetRepo(db);
+  const favouriteRepo = createFavouriteRepo(db);
   const genCode = () => randomUUID().slice(0, 6).toUpperCase();
 
   const app = express();
@@ -73,6 +76,7 @@ export async function createServer(port = 3001, injectedDb?: DB, options?: { sen
   app.use('/api/playlists', createPlaylistRouter(playlistRepo));
   app.use('/api/history', createHistoryRouter(historyRepo));
   app.use('/api/library', createLibraryRouter(libraryRepo));
+  app.use('/api/favourites', createFavouriteRouter(favouriteRepo));
 
   const httpServer = createHttpServer(app);
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {

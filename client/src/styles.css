@@ -401,6 +401,14 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .np-status .np-eq { height: 14px; width: 18px; }
 .np-status > span:last-child { position: relative; top: 1px; }
 .np-by { color: var(--faint); }
+/* favourite (heart) toggle on the now-playing card */
+.fav-btn {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  padding: 5px 10px; font-size: 12px; font-weight: 600; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+}
+.fav-btn:hover { color: var(--accent-2); border-color: rgba(255, 92, 168, 0.45); }
+.fav-btn.on { color: var(--accent-2); border-color: rgba(255, 92, 168, 0.5); background: rgba(255, 92, 168, 0.12); }
 .iconbtn.tofront:hover { color: var(--accent); }
 
 /* progress bar */
@@ -477,6 +485,10 @@ button.link:hover { background: none; filter: brightness(1.2); }
 
 /* queue */
 .lib-mark { display: inline-flex; vertical-align: -1px; margin-right: 6px; color: var(--accent); }
+.fav-mark { display: inline-flex; flex-shrink: 0; color: var(--accent-2); }
+/* keep the Play chip compact when it carries an icon */
+.chip.join { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.chip.join svg { width: 12px; height: 12px; }
 .queue-item { display: flex; align-items: center; gap: 10px; transition: background 0.15s ease; }
 .queue-item:hover { background: rgba(255, 255, 255, 0.07); }
 .queue-item .idx { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 12px; width: 18px; text-align: right; }

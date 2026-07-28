@@ -10,9 +10,10 @@ import { useAuth } from './auth/AuthContext.js';
 import { apiGet, apiPost, apiDelete, apiUpload } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
-import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon, LinkIcon, LeaveIcon, WaveIcon, EqBars } from './room/icons.js';
+import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon, LinkIcon, LeaveIcon, WaveIcon, EqBars, HeartIcon } from './room/icons.js';
 import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 import { clientSessionId } from './lib/session.js';
+import { listFavourites, addFavourite, removeFavourite } from './lib/favourites.js';
 
 const AV_COLORS = ['#8b5cff', '#ff5ca8', '#3ddc97', '#ffb14e', '#4ea8ff', '#c65cff'];
 function avatarColor(s: string): string {
@@ -94,9 +95,38 @@ export default function Room({
 
   // My Music — uploaded tracks that play via <audio>, which (unlike YouTube
   // embeds) keeps playing in the background and with the screen off.
+  const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [library, setLibrary] = useState<{ id: string; title: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
+  useEffect(() => {
+    if (user) {
+      listFavourites().then((r) => setFavIds(new Set(r.favourites.map((f) => f.videoId)))).catch(() => {});
+    }
+  }, [user]);
+
+  // Save/unsave the current track. Optimistic so the heart responds instantly.
+  async function toggleFavourite() {
+    const vid = state.playback.videoId;
+    if (!vid) return;
+    const wasFav = favIds.has(vid);
+    setFavIds((prev) => {
+      const next = new Set(prev);
+      if (wasFav) next.delete(vid); else next.add(vid);
+      return next;
+    });
+    try {
+      if (wasFav) await removeFavourite(vid);
+      else await addFavourite(vid, title || state.playback.title || vid, state.playback.kind ?? 'yt');
+    } catch {
+      setFavIds((prev) => { // revert on failure
+        const next = new Set(prev);
+        if (wasFav) next.add(vid); else next.delete(vid);
+        return next;
+      });
+    }
+  }
+
   useEffect(() => {
     if (user) {
       apiGet<{ tracks: { id: string; title: string }[] }>('/api/library')
@@ -476,6 +506,16 @@ export default function Room({
               {cover ? <img className="artwork" src={cover} alt="" /> : <div className="artwork placeholder"><WaveIcon size={26} /></div>}
               <div className="np-meta grow">
                 <div className="np-title">{npTitle}</div>
+                {user && hasVideo && (
+                  <button
+                    className={favIds.has(state.playback.videoId!) ? 'fav-btn on' : 'fav-btn'}
+                    onClick={() => void toggleFavourite()}
+                    title={favIds.has(state.playback.videoId!) ? 'Remove from favourites' : 'Save to favourites'}
+                  >
+                    <HeartIcon filled={favIds.has(state.playback.videoId!)} size={15} />
+                    {favIds.has(state.playback.videoId!) ? 'Saved' : 'Save'}
+                  </button>
+                )}
                 <div className="np-status">
                   <EqBars className={isPlaying ? 'eq np-eq playing' : 'eq np-eq'} />
                   <span>

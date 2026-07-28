@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CreateJoinResult, RoomState } from '@wavelength/shared';
+import type { CreateJoinResult, RoomState, TrackKind } from '@wavelength/shared';
 import socket from './socket.js';
 import { EqBars } from './room/icons.js';
 import { useAuth } from './auth/AuthContext.js';
@@ -46,6 +46,27 @@ export default function Lobby({
     if (!name.trim()) { setError('Enter a name first, then open the room.'); return; }
     setBusy(true); setError(''); remember();
     socket.emit('room:join', { code: roomCode, name: name.trim(), clientId: clientSessionId() }, handle);
+  }
+
+  /**
+   * Start listening straight from the lobby: open a fresh room, then queue the
+   * given tracks (a saved playlist, or one track from history/favourites). The
+   * first queued track starts playing automatically.
+   */
+  function startWith(action: (queue: (t: { videoId: string; title: string; kind?: TrackKind }) => void) => void) {
+    if (!name.trim()) return setError('Enter a name first.');
+    setBusy(true); setError(''); remember();
+    socket.emit('room:create', { name: name.trim(), isPublic, clientId: clientSessionId() }, (res: CreateJoinResult) => {
+      if (!res.ok) { setBusy(false); return setError(res.error); }
+      action((t) => socket.emit('queue:add', { videoId: t.videoId, title: t.title, kind: t.kind ?? 'yt' }));
+      handle(res);
+    });
+  }
+  function playPlaylist(playlistId: string) {
+    startWith(() => socket.emit('queue:loadPlaylist', { playlistId }));
+  }
+  function playTrack(t: { videoId: string; title: string; kind?: TrackKind }) {
+    startWith((queue) => queue(t));
   }
 
   const initials = (user?.displayName ?? 'G').slice(0, 2).toUpperCase();
@@ -117,7 +138,7 @@ export default function Lobby({
 
         <aside className="lobby-side">
           {user ? (
-            <AccountPanel onJoin={joinByCode} />
+            <AccountPanel onJoin={joinByCode} onPlayPlaylist={playPlaylist} onPlayTrack={playTrack} />
           ) : (
             <div className="card panel">
               <h3>Get more with an account</h3>
