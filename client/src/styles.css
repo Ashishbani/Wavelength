@@ -300,10 +300,13 @@ button.link:hover { background: none; filter: brightness(1.2); }
   position: relative; border-radius: var(--radius); overflow: hidden;
   background: #000; box-shadow: var(--shadow);
   width: 100%; height: min(58vh, 540px);
+  /* svh ignores mobile browser-bar / file-picker viewport resizes, so the
+     layout doesn't jump when they appear (vh above is the fallback). */
+  height: min(58svh, 540px);
 }
 .player-wrap > div, .player-wrap iframe { display: block; width: 100% !important; height: 100% !important; border: 0; }
 .stage-empty {
-  width: 100%; height: min(48vh, 440px); min-height: 240px;
+  width: 100%; height: min(48vh, 440px); height: min(48svh, 440px); min-height: 240px;
   display: grid; place-items: center; text-align: center;
   color: var(--muted); border: 1px dashed var(--border-strong); border-radius: var(--radius);
   background: var(--surface);
@@ -517,12 +520,21 @@ button.link:hover { background: none; filter: brightness(1.2); }
    My Music (uploaded tracks) + audio stage
    ============================================================ */
 .upload-btn {
+  position: relative; overflow: hidden;
   display: block; text-align: center; margin-top: 10px; padding: 11px;
   border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
   color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .upload-btn:hover { border-color: var(--accent); background: rgba(139, 92, 255, 0.10); }
+.upload-btn.busy { border-style: solid; border-color: var(--accent); color: var(--text); cursor: progress; }
+.upload-fill {
+  position: absolute; top: 0; left: 0; bottom: 0; width: 0;
+  background: linear-gradient(120deg, rgba(139, 92, 255, 0.4), rgba(255, 92, 168, 0.4));
+  transition: width 0.2s ease;
+}
+.upload-label { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.upload-label svg { flex-shrink: 0; }
 .audio-stage { position: relative; }
 .logo-eq.idle span { animation-play-state: paused; }
 

@@ -10,7 +10,7 @@ import { useAuth } from './auth/AuthContext.js';
 import { apiGet, apiPost, apiDelete, apiUpload } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
-import { PrevIcon, NextIcon, PlayIcon, PauseIcon } from './room/icons.js';
+import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon } from './room/icons.js';
 import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 import { clientSessionId } from './lib/session.js';
 
@@ -96,6 +96,7 @@ export default function Room({
   // embeds) keeps playing in the background and with the screen off.
   const [library, setLibrary] = useState<{ id: string; title: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
   useEffect(() => {
     if (user) {
       apiGet<{ tracks: { id: string; title: string }[] }>('/api/library')
@@ -107,15 +108,19 @@ export default function Room({
     e.target.value = '';
     if (!file) return;
     setUploading(true);
+    setUploadPct(0);
     try {
       const trackTitle = file.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Untitled';
-      await apiUpload(`/api/library?title=${encodeURIComponent(trackTitle)}`, file);
+      const up = await apiUpload<{ id: string; title: string }>(`/api/library?title=${encodeURIComponent(trackTitle)}`, file, setUploadPct);
       const r = await apiGet<{ tracks: { id: string; title: string }[] }>('/api/library');
       setLibrary(r.tracks);
+      // Freshly uploaded music should just play — queue it immediately.
+      addLibTrack(up);
     } catch (err) {
       window.alert((err as Error).message);
     } finally {
       setUploading(false);
+      setUploadPct(0);
     }
   }
   function addLibTrack(t: { id: string; title: string }) {
@@ -546,16 +551,21 @@ export default function Room({
                       {library.length > 0 && (
                         <ul className="list lib-list">
                           {library.map((t) => (
-                            <li key={t.id} className="row">
+                            <li key={t.id} className="row click" onClick={() => addLibTrack(t)} title="Add to queue">
                               <span className="grow">{t.title}</span>
-                              <button className="vote" onClick={() => addLibTrack(t)} title="Add to queue">+ Queue</button>
-                              <button className="iconbtn" onClick={() => deleteTrack(t.id)} title="Delete track">✕</button>
+                              <button className="vote" onClick={(e) => { e.stopPropagation(); addLibTrack(t); }} title="Add to queue">+ Queue</button>
+                              <button className="iconbtn" onClick={(e) => { e.stopPropagation(); void deleteTrack(t.id); }} title="Delete track">✕</button>
                             </li>
                           ))}
                         </ul>
                       )}
-                      <label className="upload-btn">
-                        {uploading ? 'Uploading…' : '⬆ Upload a song  ·  mp3 / m4a, up to 12 MB'}
+                      <label className={uploading ? 'upload-btn busy' : 'upload-btn'}>
+                        {uploading && <span className="upload-fill" style={{ width: `${uploadPct}%` }} />}
+                        <span className="upload-label">
+                          {uploading
+                            ? (uploadPct >= 100 ? 'Saving…' : `Uploading… ${uploadPct}%`)
+                            : <><AddSongIcon /> Upload a song · mp3 / m4a, up to 12 MB</>}
+                        </span>
                         <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
                       </label>
                     </div>

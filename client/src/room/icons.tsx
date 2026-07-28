@@ -22,3 +22,10 @@ export const PauseIcon = () => (
     <path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z" />
   </svg>
 );
+// Musical note with a plus — "add a song", clearer than a bare up-arrow.
+export const AddSongIcon = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+    <path d="M13 3v10.55A4 4 0 1 0 15 17V7h4V3z" />
+    <path d="M4 7h2v2h2v2H6v2H4v-2H2V9h2z" />
+  </svg>
+);

@@ -29,12 +29,31 @@ export function createLibraryRepo(db: DB) {
         sql: 'INSERT INTO tracks (id, owner_user_id, title, mime, size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         args: [id, ownerUserId, title, mime, bytes.length, createdAt],
       });
-      // One chunk per statement keeps each request comfortably under size limits.
-      for (let i = 0, idx = 0; i < bytes.length; i += CHUNK_SIZE, idx++) {
-        await db.execute({
-          sql: 'INSERT INTO track_chunks (track_id, idx, data) VALUES (?, ?, ?)',
-          args: [id, idx, bytes.subarray(i, i + CHUNK_SIZE)],
-        });
+      try {
+        // Group chunk inserts into batches (~2 MB per request): far fewer
+        // network round-trips than one-per-chunk, while staying comfortably
+        // under the hosted database's request-size limits.
+        const CHUNKS_PER_BATCH = 4;
+        const stmts = [];
+        for (let i = 0, idx = 0; i < bytes.length; i += CHUNK_SIZE, idx++) {
+          stmts.push({
+            sql: 'INSERT INTO track_chunks (track_id, idx, data) VALUES (?, ?, ?)',
+            args: [id, idx, bytes.subarray(i, i + CHUNK_SIZE)],
+          });
+        }
+        for (let i = 0; i < stmts.length; i += CHUNKS_PER_BATCH) {
+          await db.batch(stmts.slice(i, i + CHUNKS_PER_BATCH), 'write');
+        }
+      } catch (e) {
+        // Never leave a half-written track behind — it would list but not play.
+        await db.batch(
+          [
+            { sql: 'DELETE FROM track_chunks WHERE track_id = ?', args: [id] },
+            { sql: 'DELETE FROM tracks WHERE id = ?', args: [id] },
+          ],
+          'write',
+        ).catch(() => {});
+        throw e;
       }
       return { id, ownerUserId, title, mime, size: bytes.length, createdAt };
     },
