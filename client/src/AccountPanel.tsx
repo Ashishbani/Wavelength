@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './auth/AuthContext.js';
-import { apiGet, apiPut, apiDelete, ApiError } from './auth/api.js';
+import { apiGet, apiDelete } from './auth/api.js';
 
 interface SavedRoom { code: string; name: string; }
 interface Playlist { id: string; name: string; items: { videoId: string; title: string }[]; }
@@ -11,10 +11,6 @@ export default function AccountPanel({ onJoin }: { onJoin: (code: string) => voi
   const [rooms, setRooms] = useState<SavedRoom[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [curPw, setCurPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [pwBusy, setPwBusy] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -30,19 +26,6 @@ export default function AccountPanel({ onJoin }: { onJoin: (code: string) => voi
     setRooms((prev) => prev.filter((r) => r.code !== code));
   }
 
-  async function changePassword() {
-    if (newPw.length < 8) { setPwMsg({ ok: false, text: 'New password must be at least 8 characters.' }); return; }
-    setPwBusy(true); setPwMsg(null);
-    try {
-      await apiPut('/api/account/password', { currentPassword: curPw, newPassword: newPw });
-      setCurPw(''); setNewPw('');
-      setPwMsg({ ok: true, text: 'Password updated ✓' });
-    } catch (e) {
-      setPwMsg({ ok: false, text: e instanceof ApiError ? e.message : 'Could not update the password.' });
-    } finally {
-      setPwBusy(false);
-    }
-  }
 
   return (
     <div className="account">
@@ -65,21 +48,6 @@ export default function AccountPanel({ onJoin }: { onJoin: (code: string) => voi
           <li key={p.id} className="row"><span className="grow">{p.name}</span><span className="chip">{p.items.length} tracks</span></li>
         ))}</ul>
         {playlists.length === 0 && <p className="muted">Save a room's queue to create one.</p>}
-      </div>
-
-      <div className="card panel">
-        <h3>Change password</h3>
-        <div className="pw-form">
-          <input type="password" placeholder="Current password" autoComplete="current-password"
-            value={curPw} onChange={(e) => setCurPw(e.target.value)} />
-          <input type="password" placeholder="New password (8+ characters)" autoComplete="new-password"
-            value={newPw} onChange={(e) => setNewPw(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void changePassword(); }} />
-          <button className="primary" onClick={() => void changePassword()} disabled={pwBusy || !curPw || !newPw}>
-            {pwBusy ? 'Updating…' : 'Update password'}
-          </button>
-        </div>
-        {pwMsg && <p className={pwMsg.ok ? 'muted pw-ok' : 'error'}>{pwMsg.text}</p>}
       </div>
 
       <div className="card panel">

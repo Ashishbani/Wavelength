@@ -90,7 +90,7 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
             <li><span className="ico">🎧</span><div><b>Synced playback</b><small>Everyone hears the same beat, in perfect sync.</small></div></li>
             <li><span className="ico">📃</span><div><b>Shared queue & voting</b><small>Anyone can add tracks — the room votes what plays next.</small></div></li>
             <li><span className="ico">💬</span><div><b>Live chat & reactions</b><small>Talk and drop 🔥❤️🎉 as the music plays.</small></div></li>
-            <li><span className="ico">👥</span><div><b>Friends & rooms</b><small>See who's online and drop into their room.</small></div></li>
+            <li><span className="ico">🎵</span><div><b>Your own music</b><small>Upload tracks — they keep playing with the screen off.</small></div></li>
           </ul>
           <button className="guest-btn" onClick={onGuest}>Continue as guest →</button>
           <p className="muted" style={{ marginTop: 10 }}>No account needed to create or join a room.</p>

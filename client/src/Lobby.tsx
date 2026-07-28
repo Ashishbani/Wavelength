@@ -4,7 +4,6 @@ import socket from './socket.js';
 import { EqBars } from './room/icons.js';
 import { useAuth } from './auth/AuthContext.js';
 import AccountPanel from './AccountPanel.js';
-import FriendsPanel from './friends/FriendsPanel.js';
 import Toasts from './friends/Toasts.js';
 import { useLobbyRooms } from './lib/useLobbyRooms.js';
 import { clientSessionId } from './lib/session.js';
@@ -118,17 +117,14 @@ export default function Lobby({
 
         <aside className="lobby-side">
           {user ? (
-            <>
-              <AccountPanel onJoin={joinByCode} />
-              <FriendsPanel onJoin={joinByCode} />
-            </>
+            <AccountPanel onJoin={joinByCode} />
           ) : (
             <div className="card panel">
               <h3>Get more with an account</h3>
               <ul className="perks">
                 <li>💾 Save rooms & playlists</li>
                 <li>🕑 Listening history</li>
-                <li>👥 Friends & presence</li>
+                <li>🎵 Upload your own music</li>
               </ul>
               <button className="primary" style={{ width: '100%' }} onClick={onBackToAuth}>Create an account</button>
             </div>
