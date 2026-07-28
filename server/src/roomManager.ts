@@ -14,7 +14,7 @@ function emptyPlayback(): PlaybackState {
 }
 
 /** Fields a caller supplies when queueing a track; id + votes are assigned here. */
-export type NewQueueItem = Pick<QueueItem, 'videoId' | 'title' | 'addedBy'>;
+export type NewQueueItem = Pick<QueueItem, 'videoId' | 'title' | 'addedBy' | 'kind'>;
 
 export class RoomManager {
   private rooms = new Map<string, RoomState>();
@@ -118,7 +118,7 @@ export class RoomManager {
     const room = this.requireRoom(code);
     const next = room.queue.shift();
     room.playback = next
-      ? { videoId: next.videoId, isPlaying: true, positionSec: 0, lastUpdateServerTs: serverTs }
+      ? { videoId: next.videoId, kind: next.kind ?? 'yt', title: next.title, isPlaying: true, positionSec: 0, lastUpdateServerTs: serverTs }
       : { ...emptyPlayback(), lastUpdateServerTs: serverTs };
     return room.playback;
   }

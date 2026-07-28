@@ -32,3 +32,15 @@ export function apiPut<T>(path: string, body: unknown): Promise<T> {
 export function apiDelete<T>(path: string): Promise<T> {
   return fetch(`${BASE}${path}`, { method: 'DELETE', credentials: 'include' }).then(handle<T>);
 }
+/** Upload a raw file body (used by the music library). */
+export function apiUpload<T>(path: string, file: File): Promise<T> {
+  return fetch(`${BASE}${path}`, {
+    method: 'POST', credentials: 'include',
+    headers: { 'content-type': file.type || 'application/octet-stream' },
+    body: file,
+  }).then(handle<T>);
+}
+/** Streaming URL for an uploaded track (same origin in prod). */
+export function audioUrl(trackId: string): string {
+  return `${BASE}/api/library/${trackId}/audio`;
+}

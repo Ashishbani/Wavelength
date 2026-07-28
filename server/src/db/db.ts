@@ -62,6 +62,22 @@ export async function migrate(db: DB): Promise<void> {
       played_at INTEGER NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+    CREATE TABLE IF NOT EXISTS tracks (
+      id TEXT PRIMARY KEY,
+      owner_user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (owner_user_id) REFERENCES users(id)
+    );
+    CREATE TABLE IF NOT EXISTS track_chunks (
+      track_id TEXT NOT NULL,
+      idx INTEGER NOT NULL,
+      data BLOB NOT NULL,
+      PRIMARY KEY (track_id, idx),
+      FOREIGN KEY (track_id) REFERENCES tracks(id)
+    );
     CREATE TABLE IF NOT EXISTS friend_edges (
       id TEXT PRIMARY KEY,
       requester_id TEXT NOT NULL,

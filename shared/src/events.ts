@@ -6,19 +6,28 @@ export interface Member {
   seat?: string;
 }
 
+/** Where a track comes from: a YouTube video, or an uploaded library track. */
+export type TrackKind = 'yt' | 'lib';
+
 export interface QueueItem {
   id: string;
+  /** YouTube video id, or the library track id when kind === 'lib'. */
   videoId: string;
   title: string;
   addedBy: string;
   votes: number;
+  kind?: TrackKind; // absent = 'yt' (backwards compatible)
 }
 
 export interface PlaybackState {
+  /** YouTube video id, or the library track id when kind === 'lib'. */
   videoId: string | null;
   isPlaying: boolean;
   positionSec: number;
   lastUpdateServerTs: number;
+  kind?: TrackKind; // absent = 'yt'
+  /** Queue title of the current track (library tracks can't self-report one). */
+  title?: string;
 }
 
 export interface RoomState {
@@ -62,7 +71,7 @@ export interface ClientToServerEvents {
   'playback:pause': (payload: { positionSec: number }) => void;
   'playback:seek': (payload: { positionSec: number }) => void;
   'playback:heartbeat': (payload: { positionSec: number }) => void;
-  'queue:add': (payload: { videoId: string; title: string }) => void;
+  'queue:add': (payload: { videoId: string; title: string; kind?: TrackKind }) => void;
   'queue:next': () => void;
   'queue:vote': (payload: { itemId: string }) => void;
   'queue:loadPlaylist': (payload: { playlistId: string }) => void;

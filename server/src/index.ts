@@ -21,6 +21,7 @@ import { createRoomRepo } from './db/roomRepo.js';
 import { createPlaylistRepo } from './db/playlistRepo.js';
 import { createHistoryRepo } from './db/historyRepo.js';
 import { createFriendRepo } from './db/friendRepo.js';
+import { createLibraryRepo } from './db/libraryRepo.js';
 import { PresenceRegistry } from './presence/presenceRegistry.js';
 import { createAuthRouter, COOKIE_NAME } from './auth/routes.js';
 import { createRoomRouter } from './api/roomRoutes.js';
@@ -28,6 +29,7 @@ import { createPlaylistRouter } from './api/playlistRoutes.js';
 import { createHistoryRouter } from './api/historyRoutes.js';
 import { createAccountRouter } from './api/accountRoutes.js';
 import { createFriendRouter } from './api/friendRoutes.js';
+import { createLibraryRouter } from './api/libraryRoutes.js';
 import { verifyToken } from './auth/token.js';
 import { loadPlaylistSchema, inviteSchema } from './auth/validators.js';
 
@@ -44,6 +46,7 @@ export async function createServer(port = 3001, injectedDb?: DB) {
   const playlistRepo = createPlaylistRepo(db);
   const historyRepo = createHistoryRepo(db);
   const friendRepo = createFriendRepo(db);
+  const libraryRepo = createLibraryRepo(db);
   const genCode = () => randomUUID().slice(0, 6).toUpperCase();
 
   const app = express();
@@ -63,6 +66,7 @@ export async function createServer(port = 3001, injectedDb?: DB) {
   app.use('/api/rooms', createRoomRouter(roomRepo, genCode));
   app.use('/api/playlists', createPlaylistRouter(playlistRepo));
   app.use('/api/history', createHistoryRouter(historyRepo));
+  app.use('/api/library', createLibraryRouter(libraryRepo));
 
   const httpServer = createHttpServer(app);
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
@@ -251,12 +255,22 @@ export async function createServer(port = 3001, injectedDb?: DB) {
 
     socket.on('queue:next', () => memberAction((code) => { void advanceAndLog(code); }));
 
-    socket.on('queue:add', ({ videoId, title }) => {
+    socket.on('queue:add', async ({ videoId, title, kind }) => {
+      if (!rooms.getRoomByMember(socket.id)) return;
+      const k = kind === 'lib' ? 'lib' : 'yt';
+      let cleanTitle = (title ?? '').toString().trim().slice(0, 200) || videoId;
+      if (k === 'yt') {
+        if (!isValidVideoId(videoId)) return;
+      } else {
+        // Library tracks: must reference an existing uploaded track.
+        const track = await libraryRepo.findById(String(videoId)).catch(() => null);
+        if (!track) return;
+        cleanTitle = track.title;
+      }
+      // Re-resolve after the await — the socket may have left the room meanwhile.
       const room = rooms.getRoomByMember(socket.id);
       if (!room) return;
-      if (!isValidVideoId(videoId)) return;
-      const cleanTitle = (title ?? '').toString().trim().slice(0, 200) || videoId;
-      const updated = rooms.addToQueue(room.code, { videoId, title: cleanTitle, addedBy: nameOf(socket.id, room.code) });
+      const updated = rooms.addToQueue(room.code, { videoId, title: cleanTitle, addedBy: nameOf(socket.id, room.code), kind: k });
       io.to(room.code).emit('room:state', updated);
       if (!updated.playback.videoId) void advanceAndLog(room.code);
     });

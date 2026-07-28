@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ChangeEvent } from 'react';
 import type { RoomState, PlaybackState, ChatMessage, CreateJoinResult } from '@wavelength/shared';
 import { effectivePosition, isValidVideoId } from '@wavelength/shared';
 import socket from './socket.js';
 import YouTubePlayer, { type YTPlayerHandle } from './YouTubePlayer.js';
+import AudioPlayer from './AudioPlayer.js';
 import { useClockOffset } from './useClockOffset.js';
 import { parseVideoId } from './parseVideoId.js';
 import { useAuth } from './auth/AuthContext.js';
-import { apiGet, apiPost } from './auth/api.js';
+import { apiGet, apiPost, apiDelete, apiUpload } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
 import { PrevIcon, NextIcon, PlayIcon, PauseIcon } from './room/icons.js';
@@ -88,6 +89,42 @@ export default function Room({
     setPlaylists(r.playlists);
   }
   function loadPlaylist(id: string) { socket.emit('queue:loadPlaylist', { playlistId: id }); }
+
+  // My Music — uploaded tracks that play via <audio>, which (unlike YouTube
+  // embeds) keeps playing in the background and with the screen off.
+  const [library, setLibrary] = useState<{ id: string; title: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  useEffect(() => {
+    if (user) {
+      apiGet<{ tracks: { id: string; title: string }[] }>('/api/library')
+        .then((r) => setLibrary(r.tracks)).catch(() => {});
+    }
+  }, [user]);
+  async function onPickFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      const trackTitle = file.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Untitled';
+      await apiUpload(`/api/library?title=${encodeURIComponent(trackTitle)}`, file);
+      const r = await apiGet<{ tracks: { id: string; title: string }[] }>('/api/library');
+      setLibrary(r.tracks);
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+  function addLibTrack(t: { id: string; title: string }) {
+    socket.emit('queue:add', { videoId: t.id, title: t.title, kind: 'lib' });
+  }
+  async function deleteTrack(id: string) {
+    try {
+      await apiDelete(`/api/library/${id}`);
+      setLibrary((l) => l.filter((t) => t.id !== id));
+    } catch { /* already gone */ }
+  }
 
   const presence = usePresence();
   const [friends, setFriends] = useState<FriendSummary[]>([]);
@@ -198,11 +235,13 @@ export default function Room({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the screen awake while music plays (where supported). A locked screen
-  // suspends the YouTube player — embeds aren't allowed to play in the
-  // background — so staying visible is the only way to keep the music going.
+  // Keep the screen awake while a YOUTUBE track plays (where supported). A
+  // locked screen suspends the YouTube player — embeds aren't allowed to play
+  // in the background — so staying visible is the only way to keep the music
+  // going. Library tracks play through <audio> and survive a locked screen, so
+  // they don't need (or want) the lock.
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || state.playback.kind === 'lib') return;
     let lock: WakeLockSentinel | null = null;
     let cancelled = false;
     const request = async () => {
@@ -222,7 +261,7 @@ export default function Room({
       document.removeEventListener('visibilitychange', onVis);
       lock?.release().catch(() => {});
     };
-  }, [isPlaying]);
+  }, [isPlaying, state.playback.kind]);
 
   // Coming back to the foreground: the browser suspended our player while we
   // were away. Snap to the room's current position and try to resume; if the
@@ -339,9 +378,10 @@ export default function Room({
   codeRef.current = state.code;
   myNameRef.current = myName;
   const hasVideo = !!state.playback.videoId;
+  const isLib = state.playback.kind === 'lib';
   const pct = dur > 0 ? Math.min(100, (pos / dur) * 100) : 0;
-  const npTitle = title || (hasVideo ? 'Now playing' : 'Nothing playing');
-  const cover = state.playback.videoId ? `https://img.youtube.com/vi/${state.playback.videoId}/mqdefault.jpg` : null;
+  const npTitle = title || state.playback.title || (hasVideo ? 'Now playing' : 'Nothing playing');
+  const cover = state.playback.videoId && !isLib ? `https://img.youtube.com/vi/${state.playback.videoId}/mqdefault.jpg` : null;
 
   return (
     <div className="room">
@@ -364,12 +404,30 @@ export default function Room({
         <section className="stage">
           {hasVideo ? (
             <div className="player-shell">
-              <YouTubePlayer
-                videoId={state.playback.videoId}
-                onReady={onPlayerReady}
-                onEnded={() => { if (isHostRef.current) hostNext(); }}
-                onStateChange={onPlayerStateChange}
-              />
+              {isLib ? (
+                <div className="stage-empty audio-stage">
+                  <div>
+                    <div className={isPlaying ? 'logo-eq' : 'logo-eq idle'} style={{ margin: '0 auto 14px', height: 34, justifyContent: 'center' }}><span /><span /><span /><span /></div>
+                    <p><b>{npTitle}</b></p>
+                    <p className="muted">Playing from My Music — keeps playing with the screen off.</p>
+                  </div>
+                  <AudioPlayer
+                    key={state.playback.videoId!}
+                    trackId={state.playback.videoId!}
+                    title={state.playback.title ?? 'My music'}
+                    onReady={onPlayerReady}
+                    onEnded={() => { if (isHostRef.current) hostNext(); }}
+                    onStateChange={onPlayerStateChange}
+                  />
+                </div>
+              ) : (
+                <YouTubePlayer
+                  videoId={state.playback.videoId}
+                  onReady={onPlayerReady}
+                  onEnded={() => { if (isHostRef.current) hostNext(); }}
+                  onStateChange={onPlayerStateChange}
+                />
+              )}
               {needTap && (
                 <button className="tap-to-play" onClick={resumeLocal}>
                   <span className="tap-icon"><PlayIcon /></span>
@@ -460,16 +518,39 @@ export default function Room({
             )}
 
             {tab === 'queue' && (
-              <ul className="list scroll">
-                {state.queue.length === 0 && <div className="empty-hint">The queue is empty — add a song, or vote one up.</div>}
-                {state.queue.map((q, i) => (
-                  <li key={q.id} className="row queue-item">
-                    <span className="idx">{i + 1}</span>
-                    <span className="grow">{q.title} <small>· {q.addedBy}</small></span>
-                    <button className="vote" onClick={() => vote(q.id)} title="Upvote">▲ {q.votes}</button>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="list scroll">
+                  {state.queue.length === 0 && <div className="empty-hint">The queue is empty — add a song, or vote one up.</div>}
+                  {state.queue.map((q, i) => (
+                    <li key={q.id} className="row queue-item">
+                      <span className="idx">{i + 1}</span>
+                      <span className="grow">{q.kind === 'lib' ? '🎵 ' : ''}{q.title} <small>· {q.addedBy}</small></span>
+                      <button className="vote" onClick={() => vote(q.id)} title="Upvote">▲ {q.votes}</button>
+                    </li>
+                  ))}
+                </ul>
+                {user && (
+                  <div className="mymusic">
+                    <h4>My music</h4>
+                    {library.length === 0 && (
+                      <div className="empty-hint">Upload a song you own — it plays for everyone, and keeps playing in the background even with the screen off.</div>
+                    )}
+                    <ul className="list">
+                      {library.map((t) => (
+                        <li key={t.id} className="row">
+                          <span className="grow">{t.title}</span>
+                          <button className="vote" onClick={() => addLibTrack(t)} title="Add to queue">+ Queue</button>
+                          <button className="iconbtn" onClick={() => deleteTrack(t.id)} title="Delete track">✕</button>
+                        </li>
+                      ))}
+                    </ul>
+                    <label className="upload-btn">
+                      {uploading ? 'Uploading…' : '⬆ Upload a song (mp3 / m4a, up to 12 MB)'}
+                      <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
+                    </label>
+                  </div>
+                )}
+              </>
             )}
 
             {tab === 'people' && (
