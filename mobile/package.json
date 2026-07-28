@@ -7,8 +7,11 @@
     "sync": "cap sync android"
   },
   "dependencies": {
-    "@capacitor/android": "^8.4.2",
+    "@capacitor/android": "^7.6.8",
     "@capacitor/cli": "^7.6.8",
-    "@capacitor/core": "^8.4.2"
+    "@capacitor/core": "^7.6.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }
