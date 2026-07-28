@@ -23,7 +23,7 @@ import { createHistoryRepo } from './db/historyRepo.js';
 import { createFriendRepo } from './db/friendRepo.js';
 import { createLibraryRepo } from './db/libraryRepo.js';
 import { createResetRepo } from './db/resetRepo.js';
-import { createResendMailer, type SendMail } from './auth/mailer.js';
+import { createMailer, type SendMail } from './auth/mailer.js';
 import { PresenceRegistry } from './presence/presenceRegistry.js';
 import { createAuthRouter, COOKIE_NAME } from './auth/routes.js';
 import { createRoomRouter } from './api/roomRoutes.js';
@@ -43,7 +43,7 @@ const CLIENT_ORIGIN: string | boolean = process.env.CLIENT_ORIGIN ?? true;
 export async function createServer(port = 3001, injectedDb?: DB, options?: { sendMail?: SendMail | null }) {
   const db = injectedDb ?? openDb();
   await migrate(db); // idempotent — safe whether the db is fresh or injected/pre-migrated
-  const sendMail = options?.sendMail !== undefined ? options.sendMail : createResendMailer();
+  const sendMail = options?.sendMail !== undefined ? options.sendMail : createMailer();
   const userRepo = createUserRepo(db);
   const roomRepo = createRoomRepo(db);
   const playlistRepo = createPlaylistRepo(db);

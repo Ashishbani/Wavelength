@@ -18,7 +18,7 @@ any device.
 
 Without `DATABASE_URL` the server falls back to a local SQLite file (fine for dev; ephemeral in the cloud). Guest rooms work regardless of the database.
 
-**Optional — email for "Forgot password":** create a free account at https://resend.com, generate an API key, and set `RESEND_API_KEY` plus `MAIL_FROM` (a sender Resend accepts — a verified domain, or their onboarding sender for testing). Without these, the reset flow tells users it isn't set up.
+**Optional — email for "Forgot password":** easiest is **Brevo** (free, no domain needed): sign up at https://brevo.com, verify a sender address under *Senders & IPs* (click their confirmation link), generate an API key under *SMTP & API*, then set `BREVO_API_KEY` and `MAIL_FROM="Wavelength <your-verified-sender>"`. Alternative: Resend (`RESEND_API_KEY`), which needs a verified domain to reach anyone but the account owner. Without either, the reset flow tells users it isn't set up.
 
 ## Step 1 — Create the free Turso database
 
