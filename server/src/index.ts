@@ -15,7 +15,7 @@ import type {
 import { isValidVideoId } from '@wavelength/shared';
 import type { PresenceInfo } from '@wavelength/shared';
 import { RoomManager } from './roomManager.js';
-import { openDb, migrate, type DB } from './db/db.js';
+import { openDb, migrate, isHostedDb, type DB } from './db/db.js';
 import { createUserRepo } from './db/userRepo.js';
 import { createRoomRepo } from './db/roomRepo.js';
 import { createPlaylistRepo } from './db/playlistRepo.js';
@@ -61,7 +61,9 @@ export async function createServer(port = 3001, injectedDb?: DB) {
     next();
   });
 
-  app.get('/health', (_req, res) => res.json({ ok: true }));
+  // `persistent: false` means accounts/uploads are on a local file DB and will
+  // be lost when the host restarts — a quick way to confirm the deploy config.
+  app.get('/health', (_req, res) => res.json({ ok: true, persistent: isHostedDb() }));
   app.use('/api/auth', createAuthRouter(userRepo));
   app.use('/api/rooms', createRoomRouter(roomRepo, genCode));
   app.use('/api/playlists', createPlaylistRouter(playlistRepo));
@@ -299,6 +301,33 @@ export async function createServer(port = 3001, injectedDb?: DB) {
     socket.on('queue:playNext', ({ itemId }) => {
       if (typeof itemId !== 'string') return;
       hostAction((code) => io.to(code).emit('room:state', rooms.moveToFront(code, itemId)));
+    });
+
+    // Play a queued track immediately (any member, like the other controls).
+    socket.on('queue:playNow', ({ itemId }) => {
+      if (typeof itemId !== 'string') return;
+      memberAction((code) => {
+        const pb = rooms.playQueueItem(code, itemId, Date.now());
+        if (!pb) return;
+        io.to(code).emit('playback:update', pb);
+        const room = rooms.getRoom(code);
+        if (room) io.to(code).emit('room:state', room);
+        broadcastLobby();
+        if (pb.videoId) void logTrackStart(code, pb.videoId, pb.title ?? pb.videoId);
+      });
+    });
+
+    // Back to the previously played track (no-op when there's no history).
+    socket.on('playback:previous', () => {
+      memberAction((code) => {
+        const pb = rooms.previousTrack(code, Date.now());
+        if (!pb) return;
+        io.to(code).emit('playback:update', pb);
+        const room = rooms.getRoom(code);
+        if (room) io.to(code).emit('room:state', room);
+        broadcastLobby();
+        if (pb.videoId) void logTrackStart(code, pb.videoId, pb.title ?? pb.videoId);
+      });
     });
 
     socket.on('lobby:subscribe', () => {

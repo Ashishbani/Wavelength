@@ -153,6 +153,44 @@ describe('RoomManager', () => {
     expect(mgr.moveToFront('ROOM0', cId).queue.map((q) => q.title)).toEqual(['C', 'A', 'B']);
   });
 
+  it('plays a queued item directly, removing it from the queue', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    mgr.addToQueue('ROOM0', { videoId: 'oHg5SJYRHA0', title: 'B', addedBy: 'Bob' });
+    const bId = mgr.getRoom('ROOM0')!.queue[1].id;
+    const pb = mgr.playQueueItem('ROOM0', bId, 1000);
+    expect(pb?.videoId).toBe('oHg5SJYRHA0');
+    expect(pb?.isPlaying).toBe(true);
+    expect(mgr.getRoom('ROOM0')!.queue.map((q) => q.title)).toEqual(['A']);
+  });
+
+  it('returns null when playing an unknown queue item', () => {
+    mgr.createRoom('h1', 'Alice');
+    expect(mgr.playQueueItem('ROOM0', 'nope', 1000)).toBeNull();
+  });
+
+  it('goes back to the previous track and requeues the current one', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    mgr.addToQueue('ROOM0', { videoId: 'oHg5SJYRHA0', title: 'B', addedBy: 'Bob' });
+    mgr.advanceQueue('ROOM0', 1000); // plays A
+    expect(mgr.hasPrevious('ROOM0')).toBe(false);
+    mgr.advanceQueue('ROOM0', 2000); // plays B, A -> history
+    expect(mgr.hasPrevious('ROOM0')).toBe(true);
+
+    const pb = mgr.previousTrack('ROOM0', 3000);
+    expect(pb?.videoId).toBe('dQw4w9WgXcQ'); // back to A
+    expect(pb?.title).toBe('A');
+    // B was pushed to the front so it plays again next
+    expect(mgr.getRoom('ROOM0')!.queue[0].title).toBe('B');
+    expect(mgr.hasPrevious('ROOM0')).toBe(false);
+  });
+
+  it('previousTrack is a no-op without history', () => {
+    mgr.createRoom('h1', 'Alice');
+    expect(mgr.previousTrack('ROOM0', 1000)).toBeNull();
+  });
+
   it('carries title and addedBy into playback when advancing', () => {
     mgr.createRoom('h1', 'Alice');
     mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });

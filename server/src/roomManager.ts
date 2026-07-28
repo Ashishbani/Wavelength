@@ -16,10 +16,79 @@ function emptyPlayback(): PlaybackState {
 /** Fields a caller supplies when queueing a track; id + votes are assigned here. */
 export type NewQueueItem = Pick<QueueItem, 'videoId' | 'title' | 'addedBy' | 'kind'>;
 
+/** A track that already played, kept so "previous" can go back to it. */
+type PlayedTrack = Pick<QueueItem, 'videoId' | 'title' | 'addedBy' | 'kind'>;
+
 export class RoomManager {
   private rooms = new Map<string, RoomState>();
+  /** Per-room stack of finished tracks, most recent last. */
+  private played = new Map<string, PlayedTrack[]>();
+  private static readonly MAX_HISTORY = 50;
 
   constructor(private genCode: () => string = defaultGenCode) {}
+
+  /** Remember the currently-playing track (if any) before it's replaced. */
+  private pushPlayed(room: RoomState): void {
+    const pb = room.playback;
+    if (!pb.videoId) return;
+    const stack = this.played.get(room.code) ?? [];
+    stack.push({ videoId: pb.videoId, title: pb.title ?? pb.videoId, addedBy: pb.addedBy ?? '', kind: pb.kind ?? 'yt' });
+    if (stack.length > RoomManager.MAX_HISTORY) stack.shift();
+    this.played.set(room.code, stack);
+  }
+
+  private startTrack(room: RoomState, track: PlayedTrack, serverTs: number): PlaybackState {
+    room.playback = {
+      videoId: track.videoId,
+      kind: track.kind ?? 'yt',
+      title: track.title,
+      addedBy: track.addedBy,
+      isPlaying: true,
+      positionSec: 0,
+      lastUpdateServerTs: serverTs,
+    };
+    return room.playback;
+  }
+
+  /** True when there's a previously played track to go back to. */
+  hasPrevious(code: string): boolean {
+    return (this.played.get(code)?.length ?? 0) > 0;
+  }
+
+  /**
+   * Go back to the last played track. The current track is pushed to the FRONT
+   * of the queue so it plays again after this one, mirroring normal player
+   * behaviour. Returns null when there's no history.
+   */
+  previousTrack(code: string, serverTs: number): PlaybackState | null {
+    const room = this.requireRoom(code);
+    const stack = this.played.get(code);
+    const prev = stack?.pop();
+    if (!prev) return null;
+    const current = room.playback;
+    if (current.videoId) {
+      room.queue.unshift({
+        id: randomUUID(),
+        videoId: current.videoId,
+        title: current.title ?? current.videoId,
+        addedBy: current.addedBy ?? '',
+        kind: current.kind ?? 'yt',
+        votes: 0,
+        voters: [],
+      });
+    }
+    return this.startTrack(room, prev, serverTs);
+  }
+
+  /** Jump straight to a queued item, dropping it from the queue. */
+  playQueueItem(code: string, itemId: string, serverTs: number): PlaybackState | null {
+    const room = this.requireRoom(code);
+    const at = room.queue.findIndex((q) => q.id === itemId);
+    if (at === -1) return null;
+    const [item] = room.queue.splice(at, 1);
+    this.pushPlayed(room);
+    return this.startTrack(room, item, serverTs);
+  }
 
   createRoom(hostId: string, hostName: string, isPublic = true, seat?: string): RoomState {
     let code = this.genCode();
@@ -91,6 +160,7 @@ export class RoomManager {
 
   deleteRoom(code: string): void {
     this.rooms.delete(code);
+    this.played.delete(code);
   }
 
   addToQueue(code: string, item: NewQueueItem): RoomState {
@@ -135,10 +205,12 @@ export class RoomManager {
   advanceQueue(code: string, serverTs: number): PlaybackState {
     const room = this.requireRoom(code);
     const next = room.queue.shift();
-    room.playback = next
-      ? { videoId: next.videoId, kind: next.kind ?? 'yt', title: next.title, addedBy: next.addedBy, isPlaying: true, positionSec: 0, lastUpdateServerTs: serverTs }
-      : { ...emptyPlayback(), lastUpdateServerTs: serverTs };
-    return room.playback;
+    this.pushPlayed(room); // remember what just played so "previous" can return
+    if (!next) {
+      room.playback = { ...emptyPlayback(), lastUpdateServerTs: serverTs };
+      return room.playback;
+    }
+    return this.startTrack(room, next, serverTs);
   }
 
   setPlayback(

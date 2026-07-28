@@ -80,6 +80,10 @@ export interface ClientToServerEvents {
   'queue:vote': (payload: { itemId: string }) => void;
   'queue:remove': (payload: { itemId: string }) => void;
   'queue:playNext': (payload: { itemId: string }) => void;
+  /** Jump straight to a queued track. */
+  'queue:playNow': (payload: { itemId: string }) => void;
+  /** Go back to the previously played track. */
+  'playback:previous': () => void;
   'queue:loadPlaylist': (payload: { playlistId: string }) => void;
   'chat:send': (payload: { text: string }) => void;
   'lobby:subscribe': () => void;

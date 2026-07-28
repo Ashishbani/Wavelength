@@ -10,9 +10,24 @@ export type DB = Client;
  *  - Local dev: a file: URL (default `file:wavelength.sqlite`, or DB_PATH).
  *  - Tests: pass ':memory:'.
  */
+/** True when persistence is a hosted database rather than a local file. */
+export function isHostedDb(): boolean {
+  return !!process.env.DATABASE_URL && !process.env.DATABASE_URL.startsWith('file:');
+}
+
 export function openDb(url?: string): DB {
   const resolved = url ?? process.env.DATABASE_URL ?? `file:${process.env.DB_PATH ?? 'wavelength.sqlite'}`;
   const authToken = process.env.DATABASE_AUTH_TOKEN;
+  // Loud warning: on a host with no persistent disk, a file DB is wiped on every
+  // restart/redeploy — accounts and uploads silently vanish.
+  if (!url && process.env.NODE_ENV === 'production' && !isHostedDb()) {
+    console.warn(
+      '[wavelength] WARNING: DATABASE_URL is not set — using a LOCAL FILE database. ' +
+      'On a host without a persistent disk, all accounts, playlists and uploaded ' +
+      'music are LOST on every restart or redeploy. Set DATABASE_URL and ' +
+      'DATABASE_AUTH_TOKEN (see DEPLOY.md) to persist data.',
+    );
+  }
   // For a local file DB, make sure the parent directory exists.
   if (resolved.startsWith('file:')) {
     const file = resolved.slice('file:'.length);

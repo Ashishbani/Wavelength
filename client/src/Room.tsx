@@ -348,7 +348,14 @@ export default function Room({
     }
   }
   function hostNext() { socket.emit('queue:next'); }
-  function restart() { playerRef.current?.seekTo(0); socket.emit('playback:seek', { positionSec: 0 }); }
+  function playFromQueue(itemId: string) { socket.emit('queue:playNow', { itemId }); }
+  // Previous: restart the track if we're past the first few seconds (standard
+  // player behaviour), otherwise step back to the previously played song.
+  function hostPrev() {
+    const at = playerRef.current?.getCurrentTime() ?? 0;
+    if (at > 3) { playerRef.current?.seekTo(0); socket.emit('playback:seek', { positionSec: 0 }); return; }
+    socket.emit('playback:previous');
+  }
   function vote(itemId: string) { socket.emit('queue:vote', { itemId }); }
 
   function seek(e: MouseEvent<HTMLDivElement>) {
@@ -487,7 +494,7 @@ export default function Room({
             </div>
 
             <div className="transport" style={{ marginTop: 14 }}>
-              <button className="round-btn" onClick={restart} title="Restart track"><PrevIcon /></button>
+              <button className="round-btn" onClick={hostPrev} title="Previous track"><PrevIcon /></button>
               <button className="play-btn" onClick={togglePlay} title={localPlaying ? 'Pause' : 'Play'}>{localPlaying ? <PauseIcon /> : <PlayIcon />}</button>
               <button className="round-btn" onClick={hostNext} title="Next track"><NextIcon /></button>
             </div>
@@ -516,7 +523,7 @@ export default function Room({
           <div className="card panel chat-panel">
             <div className="tabs">
               <button className={tab === 'chat' ? 'active' : ''} onClick={() => setTab('chat')}>Chat</button>
-              <button className={tab === 'queue' ? 'active' : ''} onClick={() => setTab('queue')}>Up next · {state.queue.length}</button>
+              <button className={tab === 'queue' ? 'active' : ''} onClick={() => setTab('queue')}>Queue · {state.queue.length}</button>
               <button className={tab === 'people' ? 'active' : ''} onClick={() => setTab('people')}>People · {state.members.length}</button>
             </div>
 
@@ -596,14 +603,15 @@ export default function Room({
                   {state.queue.map((q, i) => {
                     const voted = !!me?.seat && (q.voters ?? []).includes(me.seat);
                     return (
-                      <li key={q.id} className="row queue-item">
+                      <li key={q.id} className="row queue-item click"
+                        onClick={() => playFromQueue(q.id)} title="Play this song now">
                         <span className="idx">{i + 1}</span>
                         <span className="grow">{q.kind === 'lib' ? <span className="lib-mark"><WaveIcon size={12} /></span> : null}{q.title} <small>· {q.addedBy}</small></span>
                         {isHost && i > 0 && (
-                          <button className="iconbtn tofront" onClick={() => socket.emit('queue:playNext', { itemId: q.id })} title="Play next">⤒</button>
+                          <button className="iconbtn tofront" onClick={(e) => { e.stopPropagation(); socket.emit('queue:playNext', { itemId: q.id }); }} title="Play next">⤒</button>
                         )}
-                        <button className={voted ? 'vote voted' : 'vote'} onClick={() => vote(q.id)} title={voted ? 'Remove your upvote' : 'Upvote'}>▲ {q.votes}</button>
-                        <button className="iconbtn" onClick={() => socket.emit('queue:remove', { itemId: q.id })} title="Remove from queue">✕</button>
+                        <button className={voted ? 'vote voted' : 'vote'} onClick={(e) => { e.stopPropagation(); vote(q.id); }} title={voted ? 'Remove your upvote' : 'Upvote'}>▲ {q.votes}</button>
+                        <button className="iconbtn" onClick={(e) => { e.stopPropagation(); socket.emit('queue:remove', { itemId: q.id }); }} title="Remove from queue">✕</button>
                       </li>
                     );
                   })}
