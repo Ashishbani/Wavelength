@@ -198,6 +198,45 @@ export default function Room({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep the screen awake while music plays (where supported). A locked screen
+  // suspends the YouTube player — embeds aren't allowed to play in the
+  // background — so staying visible is the only way to keep the music going.
+  useEffect(() => {
+    if (!isPlaying) return;
+    let lock: WakeLockSentinel | null = null;
+    let cancelled = false;
+    const request = async () => {
+      try {
+        if (!('wakeLock' in navigator)) return;
+        const l = await navigator.wakeLock.request('screen');
+        if (cancelled) { l.release().catch(() => {}); return; }
+        lock = l;
+      } catch { /* unsupported or denied — non-fatal */ }
+    };
+    void request();
+    // The OS auto-releases the lock when the page hides; re-acquire on return.
+    const onVis = () => { if (document.visibilityState === 'visible') void request(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVis);
+      lock?.release().catch(() => {});
+    };
+  }, [isPlaying]);
+
+  // Coming back to the foreground: the browser suspended our player while we
+  // were away. Snap to the room's current position and try to resume; if the
+  // browser insists on a fresh tap, the tap-to-play overlay takes over.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (playbackRef.current.videoId) applyPlayback(playbackRef.current, true);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Continuous gentle re-sync: every few seconds re-align to where the room
   // should be (anchored playback position + server-clock offset). This keeps
   // members in sync even when host heartbeats are throttled or missed.
