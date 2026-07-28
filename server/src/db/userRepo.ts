@@ -53,6 +53,15 @@ export function createUserRepo(db: DB) {
       const row = rs.rows[0] as unknown as UserRow | undefined;
       return row ? toUser(row) : null;
     },
+    async findWithHashById(id: string): Promise<UserWithHash | null> {
+      const rs = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [id] });
+      const row = rs.rows[0] as unknown as UserRow | undefined;
+      if (!row) return null;
+      return { ...toUser(row), passwordHash: row.password_hash };
+    },
+    async setPasswordHash(userId: string, passwordHash: string): Promise<void> {
+      await db.execute({ sql: 'UPDATE users SET password_hash = ? WHERE id = ?', args: [passwordHash, userId] });
+    },
     async findByUsername(username: string): Promise<User | null> {
       const rs = await db.execute({ sql: 'SELECT * FROM users WHERE username = ? COLLATE NOCASE', args: [username.toLowerCase()] });
       const row = rs.rows[0] as unknown as UserRow | undefined;

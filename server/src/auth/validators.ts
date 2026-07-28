@@ -26,6 +26,11 @@ export const loadPlaylistSchema = z.object({
   playlistId: z.string().min(1).max(64),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(8).max(200),
+});
+
 export const usernameSchema = z.object({
   username: z.string().trim().min(3).max(20).regex(/^[A-Za-z0-9_]+$/),
 });

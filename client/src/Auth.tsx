@@ -59,6 +59,13 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
               onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
             <button className="primary" onClick={submit} disabled={busy}>{mode === 'login' ? 'Log in' : 'Create account'}</button>
             {error && <p className="error">{error}</p>}
+            {mode === 'login' && error.toLowerCase().includes('password') && (
+              <p className="muted pw-hint">
+                Password not matching? If you're still signed in on another device or tab, open the
+                lobby there and use <b>Change password</b>. Otherwise ask the host to invite you as a
+                guest for now — email-based reset is coming.
+              </p>
+            )}
             <p className="muted switch-hint">
               {mode === 'login' ? "New here? " : 'Already have an account? '}
               <button className="link" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
