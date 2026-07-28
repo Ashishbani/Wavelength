@@ -16,6 +16,8 @@ export interface QueueItem {
   title: string;
   addedBy: string;
   votes: number;
+  /** Seats (account/guest-session ids) that upvoted — one vote per person. */
+  voters?: string[];
   kind?: TrackKind; // absent = 'yt' (backwards compatible)
 }
 
@@ -74,6 +76,7 @@ export interface ClientToServerEvents {
   'queue:add': (payload: { videoId: string; title: string; kind?: TrackKind }) => void;
   'queue:next': () => void;
   'queue:vote': (payload: { itemId: string }) => void;
+  'queue:remove': (payload: { itemId: string }) => void;
   'queue:loadPlaylist': (payload: { playlistId: string }) => void;
   'chat:send': (payload: { text: string }) => void;
   'lobby:subscribe': () => void;

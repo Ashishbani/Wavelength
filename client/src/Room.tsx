@@ -393,7 +393,10 @@ export default function Room({
   return (
     <div className="room">
       <header className="room-head">
-        <span className="wordmark">Wavelength</span>
+        <span className="brand-mini">
+          <span className={isPlaying ? 'logo-eq sm' : 'logo-eq sm idle'}><span /><span /><span /><span /></span>
+          <span className="wordmark">Wavelength</span>
+        </span>
         <div className="head-actions">
           <span className="live-pill" title="Everyone hears the same moment"><span className="beat" />IN SYNC</span>
           <button className="ghost sm-btn invite-btn" onClick={copyLink}>
@@ -554,13 +557,21 @@ export default function Room({
                       )}
                       {library.length > 0 && (
                         <ul className="list lib-list">
-                          {library.map((t) => (
-                            <li key={t.id} className="row click" onClick={() => addLibTrack(t)} title="Add to queue">
-                              <span className="grow">{t.title}</span>
-                              <button className="vote" onClick={(e) => { e.stopPropagation(); addLibTrack(t); }} title="Add to queue">+ Queue</button>
-                              <button className="iconbtn" onClick={(e) => { e.stopPropagation(); void deleteTrack(t.id); }} title="Delete track">✕</button>
-                            </li>
-                          ))}
+                          {library.map((t) => {
+                            const playing = state.playback.videoId === t.id;
+                            const queued = state.queue.some((q) => q.videoId === t.id);
+                            return (
+                              <li key={t.id} className={playing || queued ? 'row' : 'row click'}
+                                onClick={() => { if (!playing && !queued) addLibTrack(t); }}
+                                title={playing ? 'Playing now' : queued ? 'Already in the queue' : 'Add to queue'}>
+                                <span className="grow">{t.title}</span>
+                                {playing ? <span className="chip lib-state">▶ Playing</span>
+                                  : queued ? <span className="chip lib-state">✓ Queued</span>
+                                  : <button className="vote" onClick={(e) => { e.stopPropagation(); addLibTrack(t); }} title="Add to queue">+ Queue</button>}
+                                <button className="iconbtn" onClick={(e) => { e.stopPropagation(); void deleteTrack(t.id); }} title="Delete track">✕</button>
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
                       <label className={uploading ? 'upload-btn busy' : 'upload-btn'}>
@@ -579,13 +590,17 @@ export default function Room({
                 </div>
                 <ul className="list scroll">
                   {state.queue.length === 0 && <div className="empty-hint">Nothing queued yet — the next song you add starts playing right away.</div>}
-                  {state.queue.map((q, i) => (
-                    <li key={q.id} className="row queue-item">
-                      <span className="idx">{i + 1}</span>
-                      <span className="grow">{q.kind === 'lib' ? '🎵 ' : ''}{q.title} <small>· {q.addedBy}</small></span>
-                      <button className="vote" onClick={() => vote(q.id)} title="Upvote">▲ {q.votes}</button>
-                    </li>
-                  ))}
+                  {state.queue.map((q, i) => {
+                    const voted = !!me?.seat && (q.voters ?? []).includes(me.seat);
+                    return (
+                      <li key={q.id} className="row queue-item">
+                        <span className="idx">{i + 1}</span>
+                        <span className="grow">{q.kind === 'lib' ? '🎵 ' : ''}{q.title} <small>· {q.addedBy}</small></span>
+                        <button className={voted ? 'vote voted' : 'vote'} onClick={() => vote(q.id)} title={voted ? 'Remove your upvote' : 'Upvote'}>▲ {q.votes}</button>
+                        <button className="iconbtn" onClick={() => socket.emit('queue:remove', { itemId: q.id })} title="Remove from queue">✕</button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </>
             )}

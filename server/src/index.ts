@@ -270,16 +270,28 @@ export async function createServer(port = 3001, injectedDb?: DB) {
       // Re-resolve after the await — the socket may have left the room meanwhile.
       const room = rooms.getRoomByMember(socket.id);
       if (!room) return;
+      // The same track shouldn't pile up: skip if it's already queued or playing.
+      if (room.queue.some((q) => q.videoId === videoId) || room.playback.videoId === videoId) return;
       const updated = rooms.addToQueue(room.code, { videoId, title: cleanTitle, addedBy: nameOf(socket.id, room.code), kind: k });
       io.to(room.code).emit('room:state', updated);
       if (!updated.playback.videoId) void advanceAndLog(room.code);
     });
 
-    // Anyone in the room may upvote a queued track; the queue reorders by votes.
+    // Anyone in the room may upvote a queued track (one vote per seat — voting
+    // again removes the vote); the queue reorders by votes.
     socket.on('queue:vote', ({ itemId }) => {
       const room = rooms.getRoomByMember(socket.id);
       if (!room || typeof itemId !== 'string') return;
-      const updated = rooms.voteQueueItem(room.code, itemId);
+      const member = room.members.find((m) => m.id === socket.id);
+      const voter = member?.seat ?? socket.id;
+      const updated = rooms.voteQueueItem(room.code, itemId, voter);
+      io.to(room.code).emit('room:state', updated);
+    });
+
+    socket.on('queue:remove', ({ itemId }) => {
+      const room = rooms.getRoomByMember(socket.id);
+      if (!room || typeof itemId !== 'string') return;
+      const updated = rooms.removeQueueItem(room.code, itemId);
       io.to(room.code).emit('room:state', updated);
     });
 

@@ -95,22 +95,32 @@ export class RoomManager {
 
   addToQueue(code: string, item: NewQueueItem): RoomState {
     const room = this.requireRoom(code);
-    room.queue.push({ id: randomUUID(), votes: 0, ...item });
+    room.queue.push({ id: randomUUID(), votes: 0, voters: [], ...item });
     return room;
   }
 
-  /** Upvote a queued item and keep the queue ordered by votes (desc, stable). */
-  voteQueueItem(code: string, itemId: string): RoomState {
+  /** Toggle a member's upvote (one vote per seat) and keep the queue ordered
+      by votes (desc, stable). */
+  voteQueueItem(code: string, itemId: string, voter: string): RoomState {
     const room = this.requireRoom(code);
     const item = room.queue.find((q) => q.id === itemId);
     if (item) {
-      item.votes += 1;
+      const voters = item.voters ?? (item.voters = []);
+      const at = voters.indexOf(voter);
+      if (at === -1) voters.push(voter); else voters.splice(at, 1);
+      item.votes = voters.length;
       // Stable sort: higher votes first, otherwise preserve insertion order.
       room.queue = room.queue
         .map((q, i) => ({ q, i }))
         .sort((a, b) => b.q.votes - a.q.votes || a.i - b.i)
         .map((x) => x.q);
     }
+    return room;
+  }
+
+  removeQueueItem(code: string, itemId: string): RoomState {
+    const room = this.requireRoom(code);
+    room.queue = room.queue.filter((q) => q.id !== itemId);
     return room;
   }
 

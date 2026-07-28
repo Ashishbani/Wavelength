@@ -122,9 +122,26 @@ describe('RoomManager', () => {
     mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
     mgr.addToQueue('ROOM0', { videoId: 'oHg5SJYRHA0', title: 'B', addedBy: 'Bob' });
     const bId = mgr.getRoom('ROOM0')!.queue[1].id;
-    const after = mgr.voteQueueItem('ROOM0', bId);
+    const after = mgr.voteQueueItem('ROOM0', bId, 'seat-1');
     expect(after.queue[0].title).toBe('B');
     expect(after.queue[0].votes).toBe(1);
+  });
+
+  it('allows one vote per seat; voting again toggles it off', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    const id = mgr.getRoom('ROOM0')!.queue[0].id;
+    mgr.voteQueueItem('ROOM0', id, 'seat-1');
+    expect(mgr.voteQueueItem('ROOM0', id, 'seat-1').queue[0].votes).toBe(0); // toggled off
+    mgr.voteQueueItem('ROOM0', id, 'seat-1');
+    expect(mgr.voteQueueItem('ROOM0', id, 'seat-2').queue[0].votes).toBe(2); // two people
+  });
+
+  it('removes a queued item', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    const id = mgr.getRoom('ROOM0')!.queue[0].id;
+    expect(mgr.removeQueueItem('ROOM0', id).queue).toHaveLength(0);
   });
 
   it('lists public occupied rooms busiest first and excludes private ones', () => {

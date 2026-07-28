@@ -275,7 +275,12 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .room-head {
   display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
 }
-.room-head .wordmark { font-size: 22px; }
+/* Brand reads clearly larger than the surrounding controls, with the live
+   equalizer mark beside it (it dances while music plays). */
+.brand-mini { display: inline-flex; align-items: center; gap: 9px; }
+.room-head .wordmark { font-size: 26px; }
+.logo-eq.sm { height: 22px; gap: 3px; }
+.logo-eq.sm span { width: 4.5px; border-radius: 2.5px; }
 .room-badge {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 12px; border-radius: 999px;
@@ -505,6 +510,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
   background: rgba(255,255,255,0.06); color: var(--muted);
 }
 .vote:hover { background: var(--grad); color: white; border-color: transparent; }
+.vote.voted { background: var(--grad); color: white; border-color: transparent; box-shadow: 0 3px 10px rgba(139, 92, 255, 0.4); }
+.chip.lib-state { flex-shrink: 0; color: var(--online); background: rgba(61, 220, 151, 0.14); }
 .sm-btn { font-size: 13px; padding: 6px 11px; }
 .room-head { flex-wrap: wrap; }
 .me-chip {
@@ -583,7 +590,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
              calc(14px + env(safe-area-inset-left, 0px));
   }
   .room-head { gap: 8px 10px; margin-bottom: 14px; }
-  .room-head .wordmark { font-size: 18px; }
+  .room-head .wordmark { font-size: 21px; }
+  .logo-eq.sm { height: 18px; }
   /* Row 1: brand … room code + Leave. Row 2: sync · invite · me. */
   .head-right { order: 2; }
   .head-actions { order: 3; flex-basis: 100%; flex-wrap: wrap; }
@@ -616,6 +624,14 @@ button.link:hover { background: none; filter: brightness(1.2); }
   .hero-tag { font-size: 16px; }
   /* Hide the @username on the header chip so it never crowds the controls. */
   .me-chip .me-name small { display: none; }
+  /* Brand stays prominent but compact enough that Room code + Leave share
+     the top row on narrow phones. */
+  .room-head .wordmark { font-size: 19px; }
+  .logo-eq.sm { height: 15px; gap: 2.5px; }
+  .logo-eq.sm span { width: 3.5px; }
+  .room-badge { padding: 5px 9px; }
+  .room-badge b { letter-spacing: 1px; }
+  .leave-btn { padding: 7px 11px; }
   /* Bigger, thumb-friendly transport targets. */
   .play-btn { width: 60px; height: 60px; }
   .round-btn { width: 46px; height: 46px; }
