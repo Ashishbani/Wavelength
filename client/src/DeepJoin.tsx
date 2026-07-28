@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CreateJoinResult, RoomState } from '@wavelength/shared';
 import socket from './socket.js';
+import { EqBars } from './room/icons.js';
 import { useAuth } from './auth/AuthContext.js';
 import { clientSessionId } from './lib/session.js';
 
@@ -62,7 +63,7 @@ export default function DeepJoin({
       <div className="landing">
         <div className="brand">
           <div className="logo-row">
-            <div className="logo-eq"><span /><span /><span /><span /></div>
+            <EqBars className="logo-eq" />
             <h1 className="wordmark">Wavelength</h1>
           </div>
           <p className="tagline">Rejoining your room…</p>
@@ -75,7 +76,7 @@ export default function DeepJoin({
     <div className="landing">
       <div className="brand">
         <div className="logo-row">
-          <div className="logo-eq"><span /><span /><span /><span /></div>
+          <EqBars className="logo-eq" />
           <h1 className="wordmark">Wavelength</h1>
         </div>
         <p className="tagline">You've been invited to a listening room.</p>

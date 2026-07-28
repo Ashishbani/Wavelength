@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CreateJoinResult, RoomState } from '@wavelength/shared';
 import socket from './socket.js';
+import { EqBars } from './room/icons.js';
 import { useAuth } from './auth/AuthContext.js';
 import AccountPanel from './AccountPanel.js';
 import FriendsPanel from './friends/FriendsPanel.js';
@@ -56,7 +57,7 @@ export default function Lobby({
 
       <div className="card lobby-bar">
         <span className="brand-mini">
-          <span className="logo-eq sm"><span /><span /><span /><span /></span>
+          <EqBars className="logo-eq sm" />
           <span className="wordmark">Wavelength</span>
         </span>
         <span className="lobby-id">
@@ -103,7 +104,7 @@ export default function Lobby({
                 {liveRooms.map((r) => (
                   <button key={r.code} className="room-card" onClick={() => joinByCode(r.code)}>
                     <div className="rc-top">
-                      <span className={r.nowPlaying ? 'eq playing' : 'eq'}><span /><span /><span /><span /></span>
+                      <EqBars className={r.nowPlaying ? 'eq playing' : 'eq'} />
                       <span className={r.nowPlaying ? 'rc-live on' : 'rc-live'}>{r.nowPlaying ? 'LIVE' : 'idle'}</span>
                     </div>
                     <div className="rc-name">{r.name}</div>

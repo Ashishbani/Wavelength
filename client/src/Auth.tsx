@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from './auth/AuthContext.js';
+import { EqBars } from './room/icons.js';
 import { ApiError } from './auth/api.js';
 
 export default function Auth({ onGuest }: { onGuest: () => void }) {
@@ -28,7 +29,7 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
       <div className="auth-split">
         <div className="auth-hero">
           <div className="logo-row">
-            <div className="logo-eq"><span /><span /><span /><span /></div>
+            <EqBars className="logo-eq" />
             <h1 className="wordmark">Wavelength</h1>
           </div>
           <p className="hero-tag">Listen to the same song, at the same moment, with anyone — anywhere.</p>

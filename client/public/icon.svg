@@ -7,10 +7,12 @@
   </defs>
   <rect width="512" height="512" rx="112" fill="#0b0b1a"/>
   <rect width="512" height="512" rx="112" fill="url(#g)" opacity="0.18"/>
+  <!-- symmetric soundwave: tallest bar centered, mirrored outward -->
   <g fill="url(#g)">
-    <rect x="140" y="196" width="42" height="120" rx="21"/>
-    <rect x="204" y="140" width="42" height="232" rx="21"/>
-    <rect x="268" y="176" width="42" height="160" rx="21"/>
-    <rect x="332" y="120" width="42" height="272" rx="21"/>
+    <rect x="112" y="204" width="40" height="104" rx="20"/>
+    <rect x="174" y="158" width="40" height="196" rx="20"/>
+    <rect x="236" y="120" width="40" height="272" rx="20"/>
+    <rect x="298" y="158" width="40" height="196" rx="20"/>
+    <rect x="360" y="204" width="40" height="104" rx="20"/>
   </g>
 </svg>

@@ -10,7 +10,7 @@ import { useAuth } from './auth/AuthContext.js';
 import { apiGet, apiPost, apiDelete, apiUpload } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
-import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon, LinkIcon, LeaveIcon } from './room/icons.js';
+import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon, LinkIcon, LeaveIcon, WaveIcon, EqBars } from './room/icons.js';
 import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 import { clientSessionId } from './lib/session.js';
 
@@ -394,7 +394,7 @@ export default function Room({
     <div className="room">
       <header className="room-head">
         <span className="brand-mini">
-          <span className={isPlaying ? 'logo-eq sm' : 'logo-eq sm idle'}><span /><span /><span /><span /></span>
+          <EqBars className={isPlaying ? 'logo-eq sm' : 'logo-eq sm idle'} />
           <span className="wordmark">Wavelength</span>
         </span>
         <div className="head-actions">
@@ -421,7 +421,7 @@ export default function Room({
               {isLib ? (
                 <div className="stage-empty audio-stage">
                   <div>
-                    <div className={isPlaying ? 'logo-eq' : 'logo-eq idle'} style={{ margin: '0 auto 14px', height: 34, justifyContent: 'center' }}><span /><span /><span /><span /></div>
+                    <EqBars className={isPlaying ? 'logo-eq' : 'logo-eq idle'} style={{ margin: '0 auto 14px', height: 34, justifyContent: 'center' }} />
                     <p><b>{npTitle}</b></p>
                     <p className="muted">Playing from My Music — keeps playing with the screen off.</p>
                   </div>
@@ -452,7 +452,7 @@ export default function Room({
           ) : (
             <div className="stage-empty">
               <div>
-                <div className="logo-eq" style={{ margin: '0 auto 14px', height: 34 }}><span /><span /><span /><span /></div>
+                <EqBars className="logo-eq" style={{ margin: '0 auto 14px', height: 34, justifyContent: 'center' }} />
                 <p><b>Queue up a track to get started</b></p>
                 <p className="muted">Open <b>Up next</b> and paste a YouTube link — or upload your own music. It plays for everyone, in sync.</p>
                 <button
@@ -467,11 +467,11 @@ export default function Room({
           <div className="card panel np-card">
             {cover && <div className="cover-bg" style={{ backgroundImage: `url(${cover})` }} />}
             <div className="nowplaying">
-              {cover ? <img className="artwork" src={cover} alt="" /> : <div className="artwork placeholder">🎵</div>}
+              {cover ? <img className="artwork" src={cover} alt="" /> : <div className="artwork placeholder"><WaveIcon size={26} /></div>}
               <div className="np-meta grow">
                 <div className="np-title">{npTitle}</div>
                 <div className="np-status">
-                  <span className={isPlaying ? 'eq np-eq playing' : 'eq np-eq'}><span /><span /><span /><span /></span>
+                  <EqBars className={isPlaying ? 'eq np-eq playing' : 'eq np-eq'} />
                   <span>
                     {isPlaying ? 'Playing' : hasVideo ? 'Paused' : 'Add a song to begin'}
                     {hasVideo && state.playback.addedBy ? <span className="np-by"> · added by {state.playback.addedBy}</span> : null}
@@ -544,7 +544,7 @@ export default function Room({
                 <div className="composer">
                   <div className="tabs seg">
                     <button className={addMode === 'yt' ? 'active' : ''} onClick={() => setAddMode('yt')}>▶ YouTube</button>
-                    <button className={addMode === 'lib' ? 'active' : ''} onClick={() => setAddMode('lib')}>🎵 My Music</button>
+                    <button className={addMode === 'lib' ? 'active' : ''} onClick={() => setAddMode('lib')}><WaveIcon size={14} /> My Music</button>
                   </div>
                   {addMode === 'yt' ? (
                     <div className="addbar">
@@ -598,7 +598,7 @@ export default function Room({
                     return (
                       <li key={q.id} className="row queue-item">
                         <span className="idx">{i + 1}</span>
-                        <span className="grow">{q.kind === 'lib' ? '🎵 ' : ''}{q.title} <small>· {q.addedBy}</small></span>
+                        <span className="grow">{q.kind === 'lib' ? <span className="lib-mark"><WaveIcon size={12} /></span> : null}{q.title} <small>· {q.addedBy}</small></span>
                         {isHost && i > 0 && (
                           <button className="iconbtn tofront" onClick={() => socket.emit('queue:playNext', { itemId: q.id })} title="Play next">⤒</button>
                         )}

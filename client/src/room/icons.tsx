@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 // Simple, pixel-aligned media-control icons (SVG beats emoji glyphs, which
 // render at inconsistent sizes/baselines across platforms).
 export const PrevIcon = () => (
@@ -21,6 +23,20 @@ export const PauseIcon = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
     <path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z" />
   </svg>
+);
+// Soundwave — the app's "music" mark: five rounded bars, tallest centered.
+export const WaveIcon = ({ size = 16 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
+    <rect x="1" y="8" width="3" height="8" rx="1.5" />
+    <rect x="5.75" y="5" width="3" height="14" rx="1.5" />
+    <rect x="10.5" y="2" width="3" height="20" rx="1.5" />
+    <rect x="15.25" y="5" width="3" height="14" rx="1.5" />
+    <rect x="20" y="8" width="3" height="8" rx="1.5" />
+  </svg>
+);
+// Animated 5-bar equalizer (symmetric wave); styling comes from the className.
+export const EqBars = ({ className, style }: { className: string; style?: CSSProperties }) => (
+  <span className={className} style={style}><span /><span /><span /><span /><span /></span>
 );
 // Chain link — invite/share.
 export const LinkIcon = () => (
