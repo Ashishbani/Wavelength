@@ -26,6 +26,16 @@ export const loadPlaylistSchema = z.object({
   playlistId: z.string().min(1).max(64),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email().max(200),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email().max(200),
+  code: z.string().regex(/^\d{6}$/),
+  newPassword: z.string().min(8).max(200),
+});
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(200),
   newPassword: z.string().min(8).max(200),

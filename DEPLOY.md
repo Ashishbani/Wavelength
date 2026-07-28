@@ -18,6 +18,8 @@ any device.
 
 Without `DATABASE_URL` the server falls back to a local SQLite file (fine for dev; ephemeral in the cloud). Guest rooms work regardless of the database.
 
+**Optional — email for "Forgot password":** create a free account at https://resend.com, generate an API key, and set `RESEND_API_KEY` plus `MAIL_FROM` (a sender Resend accepts — a verified domain, or their onboarding sender for testing). Without these, the reset flow tells users it isn't set up.
+
 ## Step 1 — Create the free Turso database
 
 ```bash

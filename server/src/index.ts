@@ -22,6 +22,8 @@ import { createPlaylistRepo } from './db/playlistRepo.js';
 import { createHistoryRepo } from './db/historyRepo.js';
 import { createFriendRepo } from './db/friendRepo.js';
 import { createLibraryRepo } from './db/libraryRepo.js';
+import { createResetRepo } from './db/resetRepo.js';
+import { createResendMailer, type SendMail } from './auth/mailer.js';
 import { PresenceRegistry } from './presence/presenceRegistry.js';
 import { createAuthRouter, COOKIE_NAME } from './auth/routes.js';
 import { createRoomRouter } from './api/roomRoutes.js';
@@ -38,15 +40,17 @@ const MAX_CHAT_LEN = 500;
 // single-origin deploy (client served by this server) and for tunnels/domains.
 const CLIENT_ORIGIN: string | boolean = process.env.CLIENT_ORIGIN ?? true;
 
-export async function createServer(port = 3001, injectedDb?: DB) {
+export async function createServer(port = 3001, injectedDb?: DB, options?: { sendMail?: SendMail | null }) {
   const db = injectedDb ?? openDb();
   await migrate(db); // idempotent — safe whether the db is fresh or injected/pre-migrated
+  const sendMail = options?.sendMail !== undefined ? options.sendMail : createResendMailer();
   const userRepo = createUserRepo(db);
   const roomRepo = createRoomRepo(db);
   const playlistRepo = createPlaylistRepo(db);
   const historyRepo = createHistoryRepo(db);
   const friendRepo = createFriendRepo(db);
   const libraryRepo = createLibraryRepo(db);
+  const resetRepo = createResetRepo(db);
   const genCode = () => randomUUID().slice(0, 6).toUpperCase();
 
   const app = express();
@@ -64,7 +68,7 @@ export async function createServer(port = 3001, injectedDb?: DB) {
   // `persistent: false` means accounts/uploads are on a local file DB and will
   // be lost when the host restarts — a quick way to confirm the deploy config.
   app.get('/health', (_req, res) => res.json({ ok: true, persistent: isHostedDb() }));
-  app.use('/api/auth', createAuthRouter(userRepo));
+  app.use('/api/auth', createAuthRouter(userRepo, resetRepo, sendMail));
   app.use('/api/rooms', createRoomRouter(roomRepo, genCode));
   app.use('/api/playlists', createPlaylistRouter(playlistRepo));
   app.use('/api/history', createHistoryRouter(historyRepo));

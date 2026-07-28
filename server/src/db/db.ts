@@ -93,6 +93,15 @@ export async function migrate(db: DB): Promise<void> {
       PRIMARY KEY (track_id, idx),
       FOREIGN KEY (track_id) REFERENCES tracks(id)
     );
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
     CREATE TABLE IF NOT EXISTS friend_edges (
       id TEXT PRIMARY KEY,
       requester_id TEXT NOT NULL,
