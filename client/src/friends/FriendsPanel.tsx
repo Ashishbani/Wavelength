@@ -25,10 +25,13 @@ export default function FriendsPanel({ onJoin }: { onJoin: (code: string) => voi
 
   if (!user) return null;
 
+  // No standalone "pick a handle" card — the Friends panel itself starts with
+  // a compact handle setup (friends are found by @handle, so it's required).
   if (!user.username) {
     return (
       <div className="card panel friends">
-        <h3>Pick a handle to use friends</h3>
+        <h3>Friends</h3>
+        <p className="muted" style={{ margin: '0 0 8px' }}>Choose your @handle — friends add you by it.</p>
         <div className="inline-add">
           <input placeholder="@handle (3–20)" value={handle} onChange={(e) => setHandle(e.target.value)} maxLength={20} />
           <button className="primary" onClick={async () => {

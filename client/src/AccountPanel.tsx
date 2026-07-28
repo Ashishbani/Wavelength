@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './auth/AuthContext.js';
-import { apiGet, apiPost, apiPut, apiDelete, ApiError } from './auth/api.js';
+import { apiGet, apiPut, apiDelete, ApiError } from './auth/api.js';
 
 interface SavedRoom { code: string; name: string; }
 interface Playlist { id: string; name: string; items: { videoId: string; title: string }[]; }
@@ -11,7 +11,6 @@ export default function AccountPanel({ onJoin }: { onJoin: (code: string) => voi
   const [rooms, setRooms] = useState<SavedRoom[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [newRoomName, setNewRoomName] = useState('');
   const [curPw, setCurPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -26,12 +25,6 @@ export default function AccountPanel({ onJoin }: { onJoin: (code: string) => voi
 
   if (!user) return null;
 
-  async function createRoom() {
-    if (!newRoomName.trim()) return;
-    const r = await apiPost<SavedRoom>('/api/rooms', { name: newRoomName.trim() });
-    setRooms((prev) => [{ code: r.code, name: r.name }, ...prev]);
-    setNewRoomName('');
-  }
   async function removeRoom(code: string) {
     await apiDelete(`/api/rooms/${code}`);
     setRooms((prev) => prev.filter((r) => r.code !== code));
@@ -53,21 +46,18 @@ export default function AccountPanel({ onJoin }: { onJoin: (code: string) => voi
 
   return (
     <div className="account">
-      <div className="card panel">
-        <h3>Your saved rooms</h3>
-        <div className="inline-add">
-          <input placeholder="New room name" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} maxLength={60} />
-          <button className="primary" onClick={createRoom}>Create</button>
+      {rooms.length > 0 && (
+        <div className="card panel">
+          <h3>Your saved rooms</h3>
+          <ul className="list">{rooms.map((r) => (
+            <li key={r.code} className="row">
+              <span className="grow click" onClick={() => onJoin(r.code)}>{r.name} <small>· {r.code}</small></span>
+              <button className="chip join" onClick={() => onJoin(r.code)}>Open</button>
+              <button className="iconbtn" onClick={() => removeRoom(r.code)}>✕</button>
+            </li>
+          ))}</ul>
         </div>
-        <ul className="list">{rooms.map((r) => (
-          <li key={r.code} className="row">
-            <span className="grow click" onClick={() => onJoin(r.code)}>{r.name} <small>· {r.code}</small></span>
-            <button className="chip join" onClick={() => onJoin(r.code)}>Open</button>
-            <button className="iconbtn" onClick={() => removeRoom(r.code)}>✕</button>
-          </li>
-        ))}</ul>
-        {rooms.length === 0 && <p className="muted">No saved rooms yet.</p>}
-      </div>
+      )}
 
       <div className="card panel">
         <h3>Your playlists</h3>
