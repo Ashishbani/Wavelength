@@ -703,10 +703,6 @@ button.link:hover { background: none; filter: brightness(1.2); }
   .room-badge .rb-label { display: none; }
   .leave-btn { gap: 0; padding: 8px 10px; font-size: 0; }
   .leave-btn svg { width: 17px; height: 17px; }
-  /* Collapse the sync pill to its pulsing dot so the action row stays on one
-     line (the dot alone still signals "live and in sync"). */
-  .head-actions .live-pill { font-size: 0; padding: 8px; gap: 0; }
-  .head-actions .live-pill .beat { width: 9px; height: 9px; }
   /* Bigger, thumb-friendly transport targets. */
   .play-btn { width: 60px; height: 60px; }
   .round-btn { width: 46px; height: 46px; }

@@ -405,7 +405,6 @@ export default function Room({
           <span className="wordmark">Wavelength</span>
         </span>
         <div className="head-actions">
-          <span className="live-pill" title="Everyone hears the same moment"><span className="beat" />IN SYNC</span>
           <button className="ghost sm-btn invite-btn" onClick={copyLink}>
             {copied ? '✓ Copied' : <><LinkIcon /> Invite link</>}
           </button>

@@ -14,6 +14,10 @@ const config: CapacitorConfig = {
   ...(url ? { server: { url, cleartext: false } } : {}),
   android: {
     allowMixedContent: false,
+    // Android 15 forces edge-to-edge for targetSdk 35: without margins the web
+    // content draws underneath the status/navigation bars and the header
+    // overlaps the system UI. 'auto' applies margins only when needed.
+    adjustMarginsForEdgeToEdge: 'auto',
   },
 };
 
