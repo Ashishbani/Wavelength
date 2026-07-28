@@ -573,6 +573,32 @@ export default function Room({
                 placeholder="Paste a YouTube link…" />
               <button className="primary" onClick={addSong}>Add to queue</button>
             </div>
+            <div className="addbar-lib">
+              {user ? (
+                <>
+                  {library.length > 0 && (
+                    <select
+                      className="control-select"
+                      defaultValue=""
+                      onChange={(e) => {
+                        const t = library.find((x) => x.id === e.target.value);
+                        if (t) addLibTrack(t);
+                        e.target.value = '';
+                      }}
+                    >
+                      <option value="" disabled>🎵 Queue from My Music…</option>
+                      {library.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+                    </select>
+                  )}
+                  <label className="upload-btn slim">
+                    {uploading ? 'Uploading…' : '⬆ Upload a song'}
+                    <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
+                  </label>
+                </>
+              ) : (
+                <p className="muted">Sign in to upload your own songs — they keep playing in the background.</p>
+              )}
+            </div>
           </div>
         </aside>
       </div>
