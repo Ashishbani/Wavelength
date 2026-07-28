@@ -1,0 +1,14 @@
+{
+  "name": "@wavelength/mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Native mobile shell for Wavelength (Capacitor)",
+  "scripts": {
+    "sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/cli": "^7.6.8",
+    "@capacitor/core": "^8.4.2"
+  }
+}
