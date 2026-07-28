@@ -17,11 +17,23 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // Switching between Log in / Sign up / Forgot starts from a clean form —
-  // fields must not carry over between modes.
+  // Switching between Log in / Sign up starts from a clean form — fields must
+  // not carry over between them.
   function switchMode(next: Mode) {
     setMode(next);
     setEmail(''); setPassword(''); setDisplayName(''); setCode('');
+    setCodeSent(false); setError(''); setNotice('');
+  }
+  // Login ↔ forgot is the SAME identity, so the email carries over — only the
+  // password/code fields reset.
+  function goForgot() {
+    setMode('forgot');
+    setPassword(''); setCode('');
+    setCodeSent(false); setError(''); setNotice('');
+  }
+  function backToLogin() {
+    setMode('login');
+    setPassword(''); setCode('');
     setCodeSent(false); setError(''); setNotice('');
   }
 
@@ -93,7 +105,10 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
 
             {mode === 'forgot' ? (
               <>
-                <p className="form-lead">Reset your password</p>
+                <div className="form-head">
+                  <button className="back-btn" onClick={backToLogin} aria-label="Back to log in" title="Back to log in">‹</button>
+                  <p className="form-lead">Reset your password</p>
+                </div>
                 <input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !codeSent) sendCode(); }} />
                 {!codeSent ? (
@@ -117,9 +132,6 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
                 )}
                 {notice && <p className="muted pw-ok">{notice}</p>}
                 {error && <p className="error">{error}</p>}
-                <p className="muted switch-hint">
-                  <button className="link" onClick={() => switchMode('login')}>← Back to log in</button>
-                </p>
               </>
             ) : (
               <>
@@ -133,9 +145,12 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
                   onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
                 <button className="primary" onClick={submit} disabled={busy}>{mode === 'login' ? 'Log in' : 'Create account'}</button>
                 {error && <p className="error">{error}</p>}
-                {mode === 'login' && (
+                {mode === 'login' && error && (
+                  <button className="reset-cta" onClick={goForgot}>Forgot your password? Reset it with an email code →</button>
+                )}
+                {mode === 'login' && !error && (
                   <p className="muted switch-hint">
-                    <button className="link" onClick={() => switchMode('forgot')}>Forgot password?</button>
+                    <button className="link" onClick={goForgot}>Forgot password?</button>
                   </p>
                 )}
                 <p className="muted switch-hint">

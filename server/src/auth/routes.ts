@@ -90,7 +90,10 @@ export function createAuthRouter(
         `Hi ${user.displayName},\n\nYour password reset code is: ${code}\n\nIt expires in 10 minutes. If you didn't request this, you can ignore this email.`,
       );
       res.json(generic);
-    } catch {
+    } catch (e) {
+      // Surface the provider's reason in server logs (e.g. Resend refusing a
+      // recipient until a domain is verified) — the client stays generic.
+      console.error('[wavelength] password-reset mail failed:', (e as Error).message);
       res.status(502).json({ error: 'Could not send the email right now. Try again in a minute.' });
     }
   });
