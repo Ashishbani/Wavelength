@@ -13,9 +13,6 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
-  // True when the reset flow inherited the email from the login form — it's
-  // shown as text, not asked for again.
-  const [emailLocked, setEmailLocked] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -29,16 +26,16 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   }
   // Login ↔ forgot is the SAME identity, so the email carries over — only the
   // password/code fields reset.
+  // Reached only from a failed login, so the email is always the one the user
+  // signed in with — the reset flow never asks for it again.
   function goForgot() {
     setMode('forgot');
     setPassword(''); setCode('');
-    setEmailLocked(!!email.trim());
     setCodeSent(false); setError(''); setNotice('');
   }
   function backToLogin() {
     setMode('login');
     setPassword(''); setCode('');
-    setEmailLocked(false);
     setCodeSent(false); setError(''); setNotice('');
   }
 
@@ -114,15 +111,7 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
                   <button className="back-btn" onClick={backToLogin} aria-label="Back to log in" title="Back to log in">‹</button>
                   <p className="form-lead">Reset your password</p>
                 </div>
-                {emailLocked ? (
-                  <p className="muted reset-to">
-                    The code goes to <b>{email}</b>{' '}
-                    <button className="link" onClick={() => { setEmailLocked(false); setCodeSent(false); }}>change</button>
-                  </p>
-                ) : (
-                  <input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !codeSent) sendCode(); }} />
-                )}
+                <p className="muted reset-to">The code goes to <b>{email}</b> — your sign-in email.</p>
                 {!codeSent ? (
                   <button className="primary" onClick={sendCode} disabled={busy || !email}>
                     {busy ? 'Sending…' : 'Email me a code'}
@@ -163,11 +152,6 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
                 {error && <p className="error">{error}</p>}
                 {mode === 'login' && error && (
                   <button className="reset-cta" onClick={goForgot}>Forgot your password? Reset it with an email code →</button>
-                )}
-                {mode === 'login' && !error && (
-                  <p className="muted switch-hint">
-                    <button className="link" onClick={goForgot}>Forgot password?</button>
-                  </p>
                 )}
                 <p className="muted switch-hint">
                   {mode === 'login' ? 'New here? ' : 'Already have an account? '}
