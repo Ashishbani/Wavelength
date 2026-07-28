@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
-import type { RoomState, PlaybackState, ChatMessage } from '@wavelength/shared';
+import type { RoomState, PlaybackState, ChatMessage, CreateJoinResult } from '@wavelength/shared';
 import { effectivePosition, isValidVideoId } from '@wavelength/shared';
 import socket from './socket.js';
 import YouTubePlayer, { type YTPlayerHandle } from './YouTubePlayer.js';
@@ -11,6 +11,7 @@ import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
 import { PrevIcon, NextIcon, PlayIcon, PauseIcon } from './room/icons.js';
 import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
+import { clientSessionId } from './lib/session.js';
 
 const AV_COLORS = ['#8b5cff', '#ff5ca8', '#3ddc97', '#ffb14e', '#4ea8ff', '#c65cff'];
 function avatarColor(s: string): string {
@@ -30,7 +31,7 @@ function fmtTime(sec: number): string {
 
 export default function Room({
   initialState,
-  selfId,
+  selfId: initialSelfId,
   onLeave,
 }: {
   initialState: RoomState;
@@ -38,6 +39,9 @@ export default function Room({
   onLeave: () => void;
 }) {
   const [state, setState] = useState<RoomState>(initialState);
+  // Our member id is the socket id, which CHANGES when the socket reconnects
+  // (network blip, backgrounded mobile tab) — so it's state, updated on rejoin.
+  const [selfId, setSelfId] = useState(initialSelfId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatText, setChatText] = useState('');
   const [urlInput, setUrlInput] = useState('');
@@ -53,6 +57,9 @@ export default function Room({
   const [copied, setCopied] = useState(false);
   const playerRef = useRef<YTPlayerHandle | null>(null);
   const playbackRef = useRef<PlaybackState>(initialState.playback);
+  // Mirrors for the reconnect handler (registered once, needs current values).
+  const codeRef = useRef(initialState.code);
+  const myNameRef = useRef('');
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const offset = useClockOffset();
   const offsetRef = useRef(0);
@@ -116,7 +123,11 @@ export default function Room({
         player.seekTo(target);
       }
     }
-    if (pb.isPlaying) player.play(); else player.pause();
+    // Enforce "play" only on hard (explicit) updates — a periodic gentle tick
+    // must never override a pause the user just pressed while its confirmation
+    // is still pending. Enforcing "pause" is always safe.
+    if (pb.isPlaying) { if (hard) player.play(); }
+    else player.pause();
   }
 
   useEffect(() => {
@@ -160,6 +171,43 @@ export default function Room({
     }, 4000);
     return () => clearInterval(id);
   }, [isHost]);
+
+  // Socket.IO reconnects automatically after a network blip or a backgrounded
+  // mobile tab — but the new connection has a new identity and is NOT a member
+  // of the room anymore: controls would be silently ignored and updates would
+  // stop arriving (stale member list, growing drift). Re-join with our seat,
+  // which evicts the stale member entry and reclaims host if we held it.
+  useEffect(() => {
+    const rejoin = () => {
+      socket.emit(
+        'room:join',
+        { code: codeRef.current, name: myNameRef.current, clientId: clientSessionId() },
+        (res: CreateJoinResult) => {
+          if (res.ok) {
+            setSelfId(res.selfId);
+            setState(res.state);
+            applyPlayback(res.state.playback, true);
+          } else {
+            onLeave(); // the room expired while we were away
+          }
+        },
+      );
+    };
+    socket.on('connect', rejoin);
+    return () => { socket.off('connect', rejoin); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Continuous gentle re-sync: every few seconds re-align to where the room
+  // should be (anchored playback position + server-clock offset). This keeps
+  // members in sync even when host heartbeats are throttled or missed.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (playbackRef.current.videoId) applyPlayback(playbackRef.current, false);
+    }, 3000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function onPlayerReady(h: YTPlayerHandle) {
     playerRef.current = h;
@@ -249,6 +297,8 @@ export default function Room({
 
   const me = state.members.find((m) => m.id === selfId);
   const myName = me?.name ?? user?.displayName ?? 'You';
+  codeRef.current = state.code;
+  myNameRef.current = myName;
   const hasVideo = !!state.playback.videoId;
   const pct = dur > 0 ? Math.min(100, (pos / dur) * 100) : 0;
   const npTitle = title || (hasVideo ? 'Now playing' : 'Nothing playing');
