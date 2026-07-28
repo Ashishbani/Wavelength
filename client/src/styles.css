@@ -606,6 +606,21 @@ button.link:hover { background: none; filter: brightness(1.2); }
 /* ============================================================
    Responsive — tablets & phones
    ============================================================ */
+/* Two-row header wherever the room layout is single-column (<=880px, matching
+   .room-grid). Grid guarantees the rows: brand and code+Leave ALWAYS share
+   row 1 (the brand shrinks if space is tight), actions always form row 2 — no
+   wrap-threshold fragility as the contents change. */
+@media (max-width: 880px) {
+  .room-head {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center; gap: 8px 10px; margin-bottom: 14px;
+  }
+  .brand-mini { grid-column: 1; grid-row: 1; min-width: 0; }
+  .brand-mini .wordmark { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .head-right { grid-column: 2; grid-row: 1; margin-left: 0; justify-self: end; }
+  .head-actions { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
+}
+
 @media (max-width: 720px) {
   .app, .app.app-wide {
     padding: calc(14px + env(safe-area-inset-top, 0px))
@@ -613,12 +628,9 @@ button.link:hover { background: none; filter: brightness(1.2); }
              calc(14px + env(safe-area-inset-bottom, 0px))
              calc(14px + env(safe-area-inset-left, 0px));
   }
-  .room-head { gap: 8px 10px; margin-bottom: 14px; }
   .room-head .wordmark { font-size: 21px; }
-  .logo-eq.sm { height: 18px; }
-  /* Row 1: brand … room code + Leave. Row 2: sync · invite · me. */
-  .head-right { order: 2; }
-  .head-actions { order: 3; flex-basis: 100%; flex-wrap: wrap; }
+  .logo-eq.sm { height: 18px; gap: 2.5px; }
+  .logo-eq.sm span { width: 4px; }
   .room-badge { font-size: 12px; padding: 5px 10px; }
   /* Video keeps a clean 16:9 box instead of a tall fixed height. */
   .player-wrap { height: auto; aspect-ratio: 16 / 9; }
@@ -656,6 +668,18 @@ button.link:hover { background: none; filter: brightness(1.2); }
   .room-badge { padding: 5px 9px; }
   .room-badge b { letter-spacing: 1px; }
   .leave-btn { padding: 7px 11px; }
+  .lobby-bar .wordmark { font-size: 19px; }
+}
+
+/* Narrowest phones only: show the wave mark alone in the room header — a
+   clipped "Wa…" reads worse than no wordmark, and this keeps Room + Leave
+   whole on one row. */
+@media (max-width: 380px) {
+  .room-head .brand-mini .wordmark { display: none; }
+  /* Collapse the sync pill to its pulsing dot so the action row stays on one
+     line (the dot alone still signals "live and in sync"). */
+  .head-actions .live-pill { font-size: 0; padding: 8px; gap: 0; }
+  .head-actions .live-pill .beat { width: 9px; height: 9px; }
   /* Bigger, thumb-friendly transport targets. */
   .play-btn { width: 60px; height: 60px; }
   .round-btn { width: 46px; height: 46px; }
