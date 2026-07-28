@@ -409,7 +409,7 @@ export default function Room({
           </span>
         </div>
         <div className="head-right">
-          <span className="room-badge">Room <b>{state.code}</b></span>
+          <span className="room-badge"><span className="rb-label">Room </span><b>{state.code}</b></span>
           <button className="ghost sm-btn leave-btn" onClick={onLeave} title="Leave the room"><LeaveIcon /> Leave</button>
         </div>
       </header>

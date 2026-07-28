@@ -281,12 +281,17 @@ button.link:hover { background: none; filter: brightness(1.2); }
 /* ============================================================
    Room
    ============================================================ */
+/* Grid, not flex-wrap, at every width: the brand column sizes to its content
+   (so the app name is never clipped), the actions column absorbs the slack and
+   truncates the member name if needed, and code + Leave stay pinned right. */
 .room-head {
-  display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 14px; margin-bottom: 20px;
 }
 /* Brand reads clearly larger than the surrounding controls, with the live
    equalizer mark beside it (it dances while music plays). */
-.brand-mini { display: inline-flex; align-items: center; gap: 9px; }
+.brand-mini { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.brand-mini .wordmark { white-space: nowrap; }
 .room-head .wordmark { font-size: 26px; }
 .logo-eq.sm { height: 22px; gap: 3px; }
 .logo-eq.sm span { width: 4.5px; border-radius: 2.5px; }
@@ -298,8 +303,12 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .room-badge b { letter-spacing: 2px; }
 /* Header groups: brand · actions (sync/invite/me) · right (code + leave).
    The right group is pinned to the top-right at every width. */
-.head-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.head-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+/* Shrinkable so a long member name never pushes the room code + Leave off the
+   row — the chip's name truncates instead (the app name never does). */
+.head-actions { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
+.head-actions .me-chip { min-width: 0; }
+.head-actions .me-chip .me-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.head-right { display: flex; align-items: center; gap: 8px; justify-self: end; flex-shrink: 0; }
 .invite-btn, .leave-btn { display: inline-flex; align-items: center; gap: 7px; }
 .invite-btn svg, .leave-btn svg { flex-shrink: 0; }
 .leave-btn:hover { border-color: rgba(255, 107, 139, 0.55); color: var(--danger); }
@@ -537,7 +546,6 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .vote.voted { background: var(--grad); color: white; border-color: transparent; box-shadow: 0 3px 10px rgba(139, 92, 255, 0.4); }
 .chip.lib-state { flex-shrink: 0; color: var(--online); background: rgba(61, 220, 151, 0.14); }
 .sm-btn { font-size: 13px; padding: 6px 11px; }
-.room-head { flex-wrap: wrap; }
 .me-chip {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 4px 12px 4px 4px; border-radius: 999px;
@@ -611,13 +619,13 @@ button.link:hover { background: none; filter: brightness(1.2); }
    row 1 (the brand shrinks if space is tight), actions always form row 2 — no
    wrap-threshold fragility as the contents change. */
 @media (max-width: 880px) {
+  /* Two rows: brand + code/Leave on row 1, actions across row 2. */
   .room-head {
-    display: grid; grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center; gap: 8px 10px; margin-bottom: 14px;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 10px; margin-bottom: 14px;
   }
-  .brand-mini { grid-column: 1; grid-row: 1; min-width: 0; }
-  .brand-mini .wordmark { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .head-right { grid-column: 2; grid-row: 1; margin-left: 0; justify-self: end; }
+  .brand-mini { grid-column: 1; grid-row: 1; }
+  .head-right { grid-column: 2; grid-row: 1; }
   .head-actions { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
 }
 
@@ -675,7 +683,11 @@ button.link:hover { background: none; filter: brightness(1.2); }
    clipped "Wa…" reads worse than no wordmark, and this keeps Room + Leave
    whole on one row. */
 @media (max-width: 380px) {
-  .room-head .brand-mini .wordmark { display: none; }
+  /* Shed the word "Room" (the code is self-evident in a pill) and the Leave
+     label — the app name stays intact. */
+  .room-badge .rb-label { display: none; }
+  .leave-btn { gap: 0; padding: 8px 10px; font-size: 0; }
+  .leave-btn svg { width: 17px; height: 17px; }
   /* Collapse the sync pill to its pulsing dot so the action row stays on one
      line (the dot alone still signals "live and in sync"). */
   .head-actions .live-pill { font-size: 0; padding: 8px; gap: 0; }
