@@ -328,7 +328,9 @@ button.link:hover { background: none; filter: brightness(1.2); }
 /* Shrinkable so a long member name never pushes the room code + Leave off the
    row — the chip's name truncates instead (the app name never does). */
 .head-actions { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
-.head-actions .me-chip { min-width: 0; }
+/* The member chip sits at the far right of its row — on phones that places it
+   at the extreme right, directly below the Leave button. */
+.head-actions .me-chip { min-width: 0; margin-left: auto; }
 .head-actions .me-chip .me-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .head-right { display: flex; align-items: center; gap: 8px; justify-self: end; flex-shrink: 0; }
 .invite-btn, .leave-btn { display: inline-flex; align-items: center; gap: 7px; }
@@ -456,13 +458,13 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .tabs button.active { background: var(--surface-2); color: var(--text); }
 .count { color: var(--faint); font-weight: 600; }
 
-/* chat */
-.chat-panel { display: flex; flex-direction: column; flex: 1; min-height: 320px; }
+/* chat — hugs its (capped) content instead of stretching to fill the column */
+.chat-panel { display: flex; flex-direction: column; min-height: 280px; }
 /* Bounded height: past the cap the list scrolls (auto-pinned to the newest
    message) instead of growing the panel — and the page — with every message. */
 .messages {
   flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-  min-height: 0; max-height: min(52vh, 540px); padding-right: 4px;
+  min-height: 0; max-height: min(42vh, 400px); padding-right: 4px;
 }
 .msg { display: flex; gap: 8px; align-items: flex-start; }
 .msg .bubble { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 7px 11px; font-size: 14px; overflow-wrap: anywhere; min-width: 0; }
@@ -675,11 +677,11 @@ button.link:hover { background: none; filter: brightness(1.2); }
   .toasts { top: 10px; right: 10px; left: 10px; }
   .toast { max-width: none; }
   .np-title { font-size: 15px; }
-  .chat-panel { min-height: 300px; }
+  .chat-panel { min-height: 0; }
   /* Reserve the chat's full height up front on phones: the panel never grows
      or shifts as messages arrive — the list just scrolls. flex-basis would
      override height, so switch the item to fixed sizing here. */
-  .messages { flex: 0 0 auto; height: min(48vh, 480px); }
+  .messages { flex: 0 0 auto; height: min(36vh, 340px); }
   .lobby, .lobby-side, .lobby-main { min-width: 0; }
 }
 
