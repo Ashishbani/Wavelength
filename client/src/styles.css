@@ -292,6 +292,9 @@ button.link:hover { background: none; filter: brightness(1.2); }
 @keyframes beat { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
 
 .room-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+/* Grid items default to min-width:auto, so one long unbreakable title would
+   widen the whole column (and the page) instead of ellipsizing inside it. */
+.room-grid > * { min-width: 0; }
 @media (max-width: 880px) { .room-grid { grid-template-columns: 1fr; } }
 
 /* now-playing stage */
@@ -311,6 +314,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
   color: var(--muted); border: 1px dashed var(--border-strong); border-radius: var(--radius);
   background: var(--surface);
 }
+.stage-empty > div { max-width: 100%; padding: 0 18px; }
+.stage-empty p { overflow-wrap: anywhere; }
 
 /* now-playing card with ambient album art */
 .np-card { position: relative; overflow: hidden; }
@@ -371,7 +376,7 @@ button.link:hover { background: none; filter: brightness(1.2); }
   width: 42px; height: 42px; border-radius: 50%;
   display: grid; place-items: center; font-size: 15px;
 }
-.control-select { min-width: 0; }
+.control-select { min-width: 0; max-width: 100%; }
 
 /* add-song composer (lives in the Up next tab) */
 .addbar { display: flex; gap: 8px; }
@@ -396,7 +401,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .chat-panel { display: flex; flex-direction: column; flex: 1; min-height: 320px; }
 .messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; padding-right: 4px; }
 .msg { display: flex; gap: 8px; align-items: flex-start; }
-.msg .bubble { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 7px 11px; font-size: 14px; }
+.msg .bubble { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 7px 11px; font-size: 14px; overflow-wrap: anywhere; min-width: 0; }
+.msg > div { min-width: 0; }
 .msg .who { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
 .chat-input { display: flex; gap: 8px; margin-top: 10px; }
 .chat-input input { flex: 1; min-width: 0; }
@@ -423,7 +429,7 @@ button.link:hover { background: none; filter: brightness(1.2); }
   animation: slidein 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 @keyframes slidein { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
-.toast .grow { flex: 1; font-size: 14px; }
+.toast .grow { flex: 1; font-size: 14px; overflow-wrap: anywhere; }
 
 /* ============================================================
    Auth — two-column, screen-filling
@@ -460,6 +466,7 @@ button.link:hover { background: none; filter: brightness(1.2); }
    ============================================================ */
 .lobby { max-width: 1240px; margin: 0 auto; }
 .lobby-grid { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+.lobby-grid > * { min-width: 0; }
 .lobby-main { display: flex; flex-direction: column; gap: 16px; }
 .lobby-side { display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 900px) { .lobby-grid { grid-template-columns: 1fr; } }
