@@ -295,6 +295,12 @@ export async function createServer(port = 3001, injectedDb?: DB) {
       io.to(room.code).emit('room:state', updated);
     });
 
+    // Host-only: bump a queued track to the front of the line.
+    socket.on('queue:playNext', ({ itemId }) => {
+      if (typeof itemId !== 'string') return;
+      hostAction((code) => io.to(code).emit('room:state', rooms.moveToFront(code, itemId)));
+    });
+
     socket.on('lobby:subscribe', () => {
       socket.join(LOBBY);
       socket.emit('lobby:rooms', { rooms: rooms.listPublicRooms() });

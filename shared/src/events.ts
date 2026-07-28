@@ -30,6 +30,8 @@ export interface PlaybackState {
   kind?: TrackKind; // absent = 'yt'
   /** Queue title of the current track (library tracks can't self-report one). */
   title?: string;
+  /** Display name of whoever queued the current track. */
+  addedBy?: string;
 }
 
 export interface RoomState {
@@ -77,6 +79,7 @@ export interface ClientToServerEvents {
   'queue:next': () => void;
   'queue:vote': (payload: { itemId: string }) => void;
   'queue:remove': (payload: { itemId: string }) => void;
+  'queue:playNext': (payload: { itemId: string }) => void;
   'queue:loadPlaylist': (payload: { playlistId: string }) => void;
   'chat:send': (payload: { text: string }) => void;
   'lobby:subscribe': () => void;

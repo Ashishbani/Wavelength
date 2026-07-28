@@ -124,11 +124,19 @@ export class RoomManager {
     return room;
   }
 
+  /** Move a queued item to the front ("play next"). */
+  moveToFront(code: string, itemId: string): RoomState {
+    const room = this.requireRoom(code);
+    const at = room.queue.findIndex((q) => q.id === itemId);
+    if (at > 0) room.queue.unshift(room.queue.splice(at, 1)[0]);
+    return room;
+  }
+
   advanceQueue(code: string, serverTs: number): PlaybackState {
     const room = this.requireRoom(code);
     const next = room.queue.shift();
     room.playback = next
-      ? { videoId: next.videoId, kind: next.kind ?? 'yt', title: next.title, isPlaying: true, positionSec: 0, lastUpdateServerTs: serverTs }
+      ? { videoId: next.videoId, kind: next.kind ?? 'yt', title: next.title, addedBy: next.addedBy, isPlaying: true, positionSec: 0, lastUpdateServerTs: serverTs }
       : { ...emptyPlayback(), lastUpdateServerTs: serverTs };
     return room.playback;
   }

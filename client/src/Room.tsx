@@ -472,7 +472,10 @@ export default function Room({
                 <div className="np-title">{npTitle}</div>
                 <div className="np-status">
                   <span className={isPlaying ? 'eq np-eq playing' : 'eq np-eq'}><span /><span /><span /><span /></span>
-                  <span>{isPlaying ? 'Playing' : hasVideo ? 'Paused' : 'Add a song to begin'}</span>
+                  <span>
+                    {isPlaying ? 'Playing' : hasVideo ? 'Paused' : 'Add a song to begin'}
+                    {hasVideo && state.playback.addedBy ? <span className="np-by"> · added by {state.playback.addedBy}</span> : null}
+                  </span>
                 </div>
               </div>
             </div>
@@ -596,6 +599,9 @@ export default function Room({
                       <li key={q.id} className="row queue-item">
                         <span className="idx">{i + 1}</span>
                         <span className="grow">{q.kind === 'lib' ? '🎵 ' : ''}{q.title} <small>· {q.addedBy}</small></span>
+                        {isHost && i > 0 && (
+                          <button className="iconbtn tofront" onClick={() => socket.emit('queue:playNext', { itemId: q.id })} title="Play next">⤒</button>
+                        )}
                         <button className={voted ? 'vote voted' : 'vote'} onClick={() => vote(q.id)} title={voted ? 'Remove your upvote' : 'Upvote'}>▲ {q.votes}</button>
                         <button className="iconbtn" onClick={() => socket.emit('queue:remove', { itemId: q.id })} title="Remove from queue">✕</button>
                       </li>

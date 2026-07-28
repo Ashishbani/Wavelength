@@ -55,15 +55,21 @@ export default function Lobby({
       <Toasts onJoin={joinByCode} />
 
       <div className="card lobby-bar">
-        <span className="who">
-          <span className="avatar sm" style={{ background: user ? '#8b5cff' : '#4a4a68' }}>{initials}</span>
-          {user
-            ? <span>Signed in as <b>{user.displayName}</b>{user.username ? <small> · @{user.username}</small> : null}</span>
-            : <span>Listening as a <b>guest</b></span>}
+        <span className="brand-mini">
+          <span className="logo-eq sm"><span /><span /><span /><span /></span>
+          <span className="wordmark">Wavelength</span>
         </span>
-        {user
-          ? <button className="ghost" onClick={() => logout()}>Log out</button>
-          : <button className="ghost" onClick={onBackToAuth}>Log in / Sign up</button>}
+        <span className="lobby-id">
+          <span className="who">
+            <span className="avatar sm" style={{ background: user ? '#8b5cff' : '#4a4a68' }}>{initials}</span>
+            {user
+              ? <span className="who-text">Signed in as <b>{user.displayName}</b>{user.username ? <small> · @{user.username}</small> : null}</span>
+              : <span className="who-text">Listening as a <b>guest</b></span>}
+          </span>
+          {user
+            ? <button className="ghost sm-btn" onClick={() => logout()}>Log out</button>
+            : <button className="ghost sm-btn" onClick={onBackToAuth}>Log in / Sign up</button>}
+        </span>
       </div>
 
       <div className="lobby-grid">

@@ -144,6 +144,23 @@ describe('RoomManager', () => {
     expect(mgr.removeQueueItem('ROOM0', id).queue).toHaveLength(0);
   });
 
+  it('moves a queued item to the front (play next)', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    mgr.addToQueue('ROOM0', { videoId: 'oHg5SJYRHA0', title: 'B', addedBy: 'Bob' });
+    mgr.addToQueue('ROOM0', { videoId: 'kJQP7kiw5Fk', title: 'C', addedBy: 'Cara' });
+    const cId = mgr.getRoom('ROOM0')!.queue[2].id;
+    expect(mgr.moveToFront('ROOM0', cId).queue.map((q) => q.title)).toEqual(['C', 'A', 'B']);
+  });
+
+  it('carries title and addedBy into playback when advancing', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    const pb = mgr.advanceQueue('ROOM0', 1000);
+    expect(pb.title).toBe('A');
+    expect(pb.addedBy).toBe('Alice');
+  });
+
   it('lists public occupied rooms busiest first and excludes private ones', () => {
     mgr.createRoom('h1', 'Alice');          // ROOM0 public, 1
     mgr.createRoom('h2', 'Bob');            // ROOM1 public, 1

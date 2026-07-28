@@ -164,7 +164,8 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .landing { max-width: 560px; margin: 6vh auto 40px; }
 
 .brand { text-align: center; margin-bottom: 22px; }
-.brand .logo-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.logo-row { display: flex; align-items: center; gap: 14px; }
+.brand .logo-row { justify-content: center; }
 .brand h1 { font-size: 44px; }
 .brand .tagline { color: var(--muted); margin-top: 6px; font-size: 15px; }
 
@@ -190,8 +191,14 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   background: rgba(255, 177, 78, 0.12); border: 1px solid rgba(255, 177, 78, 0.35); color: #ffcf99;
 }
 .notice .grow { flex: 1; }
-.lobby-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px !important; margin-bottom: 16px; }
-.lobby-bar .who { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.lobby-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 12px 16px !important; margin-bottom: 16px; }
+.lobby-bar .wordmark { font-size: 22px; }
+.lobby-id { display: flex; align-items: center; gap: 10px; margin-left: auto; min-width: 0; }
+.lobby-bar .who { display: flex; align-items: center; gap: 10px; font-size: 14px; min-width: 0; }
+.lobby-bar .who-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 460px) {
+  .lobby-bar .who-text { display: none; } /* avatar alone identifies; brand stays readable */
+}
 .guest-btn {
   width: 100%; padding: 13px; font-size: 15px;
   background: transparent; border: 1px dashed var(--border-strong);
@@ -355,6 +362,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .np-status { display: flex; align-items: flex-end; gap: 8px; margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1; }
 .np-status .np-eq { height: 14px; width: 18px; }
 .np-status > span:last-child { position: relative; top: 1px; }
+.np-by { color: var(--faint); }
+.iconbtn.tofront:hover { color: var(--accent); }
 
 /* progress bar */
 .progress { display: flex; align-items: center; gap: 10px; }
@@ -466,7 +475,9 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .switch-hint { text-align: center; margin-top: 4px; }
 @media (max-width: 860px) {
   .auth-split { grid-template-columns: 1fr; gap: 24px; max-width: 460px; }
-  .auth-hero .logo-row { justify-content: center; }
+  /* Stack the mark above the centered title — a wrapped row leaves the bars
+     stranded in a corner. */
+  .auth-hero .logo-row { flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
   .auth-hero { text-align: center; }
   .auth-hero .hero-tag { margin-left: auto; margin-right: auto; }
   .hero-features { text-align: left; max-width: 380px; margin: 0 auto 20px; }
