@@ -33,7 +33,17 @@ export function createMailer(): SendMail | null {
   if (!from) return null;
 
   if (process.env.BREVO_API_KEY) {
-    const apiKey = process.env.BREVO_API_KEY;
+    const apiKey = process.env.BREVO_API_KEY.trim();
+    // Brevo issues two kinds of credentials: REST API keys (xkeysib-…) and
+    // SMTP keys (xsmtpsib-…). Only the former works here — mixing them up
+    // yields 401 "Key not found".
+    if (!apiKey.startsWith('xkeysib-')) {
+      console.warn(
+        '[wavelength] WARNING: BREVO_API_KEY does not look like a REST API key (expected it to ' +
+        'start with "xkeysib-"). If you copied the SMTP key (xsmtpsib-…), generate an API key ' +
+        'instead: Brevo → SMTP & API → "API Keys" tab → Generate a new API key.',
+      );
+    }
     const sender = parseFrom(from);
     return async (to, subject, text) => {
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
