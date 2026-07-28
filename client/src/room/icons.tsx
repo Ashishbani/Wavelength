@@ -22,6 +22,21 @@ export const PauseIcon = () => (
     <path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z" />
   </svg>
 );
+// Chain link — invite/share.
+export const LinkIcon = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+    <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+  </svg>
+);
+// Door with an outward arrow — leave the room.
+export const LeaveIcon = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <path d="M16 17l5-5-5-5" />
+    <path d="M21 12H9" />
+  </svg>
+);
 // Musical note with a plus — "add a song", clearer than a bare up-arrow.
 export const AddSongIcon = () => (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">

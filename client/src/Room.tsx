@@ -10,7 +10,7 @@ import { useAuth } from './auth/AuthContext.js';
 import { apiGet, apiPost, apiDelete, apiUpload } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
-import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon } from './room/icons.js';
+import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon, LinkIcon, LeaveIcon } from './room/icons.js';
 import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 import { clientSessionId } from './lib/session.js';
 
@@ -394,17 +394,21 @@ export default function Room({
     <div className="room">
       <header className="room-head">
         <span className="wordmark">Wavelength</span>
-        <span className="room-badge">Room <b>{state.code}</b></span>
-        <button className="ghost sm-btn" onClick={copyLink}>{copied ? '✓ Copied' : '🔗 Copy invite link'}</button>
-        <span className="role">
-          <span className="live-pill"><span className="beat" />IN SYNC</span>
+        <div className="head-actions">
+          <span className="live-pill" title="Everyone hears the same moment"><span className="beat" />IN SYNC</span>
+          <button className="ghost sm-btn invite-btn" onClick={copyLink}>
+            {copied ? '✓ Copied' : <><LinkIcon /> Invite link</>}
+          </button>
           <span className="me-chip" title={user ? `Signed in as ${user.displayName}` : 'Guest'}>
             <span className="avatar sm" style={{ background: avatarColor(myName) }}>{initials(myName)}</span>
             <span className="me-name">{myName}{user?.username ? <small> @{user.username}</small> : null}</span>
-            <span className="me-role">{isHost ? '🎧 host' : 'member'}</span>
+            <span className="me-role">{isHost ? 'host' : 'member'}</span>
           </span>
-          <button className="ghost sm-btn" onClick={onLeave}>Leave</button>
-        </span>
+        </div>
+        <div className="head-right">
+          <span className="room-badge">Room <b>{state.code}</b></span>
+          <button className="ghost sm-btn leave-btn" onClick={onLeave} title="Leave the room"><LeaveIcon /> Leave</button>
+        </div>
       </header>
 
       <div className="room-grid">

@@ -282,7 +282,13 @@ button.link:hover { background: none; filter: brightness(1.2); }
   background: var(--surface); border: 1px solid var(--border); font-size: 13px;
 }
 .room-badge b { letter-spacing: 2px; }
-.room-head .role { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+/* Header groups: brand · actions (sync/invite/me) · right (code + leave).
+   The right group is pinned to the top-right at every width. */
+.head-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.head-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.invite-btn, .leave-btn { display: inline-flex; align-items: center; gap: 7px; }
+.invite-btn svg, .leave-btn svg { flex-shrink: 0; }
+.leave-btn:hover { border-color: rgba(255, 107, 139, 0.55); color: var(--danger); }
 .live-pill {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
@@ -576,9 +582,11 @@ button.link:hover { background: none; filter: brightness(1.2); }
              calc(14px + env(safe-area-inset-bottom, 0px))
              calc(14px + env(safe-area-inset-left, 0px));
   }
-  .room-head { gap: 10px; margin-bottom: 14px; }
+  .room-head { gap: 8px 10px; margin-bottom: 14px; }
   .room-head .wordmark { font-size: 18px; }
-  .room-head .role { margin-left: 0; width: 100%; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+  /* Row 1: brand … room code + Leave. Row 2: sync · invite · me. */
+  .head-right { order: 2; }
+  .head-actions { order: 3; flex-basis: 100%; flex-wrap: wrap; }
   .room-badge { font-size: 12px; padding: 5px 10px; }
   /* Video keeps a clean 16:9 box instead of a tall fixed height. */
   .player-wrap { height: auto; aspect-ratio: 16 / 9; }
