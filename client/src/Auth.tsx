@@ -114,7 +114,7 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
                 <p className="muted reset-to">The code goes to <b>{email}</b> — your sign-in email.</p>
                 {!codeSent ? (
                   <button className="primary" onClick={sendCode} disabled={busy || !email}>
-                    {busy ? 'Sending…' : 'Email me a code'}
+                    {busy ? 'Sending…' : 'Send code'}
                   </button>
                 ) : (
                   <>
@@ -151,7 +151,7 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
                 >{mode === 'login' ? 'Log in' : 'Create account'}</button>
                 {error && <p className="error">{error}</p>}
                 {mode === 'login' && error && (
-                  <button className="reset-cta" onClick={goForgot}>Forgot your password? Reset it with an email code →</button>
+                  <button className="reset-cta" onClick={goForgot}>Forgot your password?</button>
                 )}
                 <p className="muted switch-hint">
                   {mode === 'login' ? 'New here? ' : 'Already have an account? '}
