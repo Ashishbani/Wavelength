@@ -47,6 +47,7 @@ export default function Room({
   const [chatText, setChatText] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [tab, setTab] = useState<'queue' | 'chat' | 'people'>('chat');
+  const [addMode, setAddMode] = useState<'yt' | 'lib'>('yt');
   const [isPlaying, setIsPlaying] = useState(false);
   // What the local YouTube player is actually doing (vs. isPlaying = the shared
   // intent). On mobile, autoplay is blocked outside a tap, so these can diverge.
@@ -62,6 +63,7 @@ export default function Room({
   const codeRef = useRef(initialState.code);
   const myNameRef = useRef('');
   const messagesRef = useRef<HTMLDivElement | null>(null);
+  const sideRef = useRef<HTMLElement | null>(null);
   const offset = useClockOffset();
   const offsetRef = useRef(0);
   offsetRef.current = offset;
@@ -440,7 +442,12 @@ export default function Room({
               <div>
                 <div className="logo-eq" style={{ margin: '0 auto 14px', height: 34 }}><span /><span /><span /><span /></div>
                 <p><b>Queue up a track to get started</b></p>
-                <p className="muted">Add a YouTube link from the sidebar — it plays for everyone, in sync.</p>
+                <p className="muted">Open <b>Up next</b> and paste a YouTube link — or upload your own music. It plays for everyone, in sync.</p>
+                <button
+                  className="primary"
+                  style={{ marginTop: 6 }}
+                  onClick={() => { setTab('queue'); sideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+                >+ Add the first song</button>
               </div>
             </div>
           )}
@@ -490,7 +497,7 @@ export default function Room({
 
         </section>
 
-        <aside className="side">
+        <aside className="side" ref={sideRef}>
           <div className="card panel chat-panel">
             <div className="tabs">
               <button className={tab === 'chat' ? 'active' : ''} onClick={() => setTab('chat')}>Chat</button>
@@ -519,8 +526,45 @@ export default function Room({
 
             {tab === 'queue' && (
               <>
+                <div className="composer">
+                  <div className="tabs seg">
+                    <button className={addMode === 'yt' ? 'active' : ''} onClick={() => setAddMode('yt')}>▶ YouTube</button>
+                    <button className={addMode === 'lib' ? 'active' : ''} onClick={() => setAddMode('lib')}>🎵 My Music</button>
+                  </div>
+                  {addMode === 'yt' ? (
+                    <div className="addbar">
+                      <input value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') addSong(); }}
+                        placeholder="Paste a YouTube link…" />
+                      <button className="primary" onClick={addSong}>Add</button>
+                    </div>
+                  ) : user ? (
+                    <div className="lib-box">
+                      {library.length === 0 && (
+                        <div className="empty-hint">No songs yet — upload one below.<br />Your songs keep playing in the background, even with the screen off.</div>
+                      )}
+                      {library.length > 0 && (
+                        <ul className="list lib-list">
+                          {library.map((t) => (
+                            <li key={t.id} className="row">
+                              <span className="grow">{t.title}</span>
+                              <button className="vote" onClick={() => addLibTrack(t)} title="Add to queue">+ Queue</button>
+                              <button className="iconbtn" onClick={() => deleteTrack(t.id)} title="Delete track">✕</button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <label className="upload-btn">
+                        {uploading ? 'Uploading…' : '⬆ Upload a song  ·  mp3 / m4a, up to 12 MB'}
+                        <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="empty-hint">Sign in to upload your own songs — they keep playing in the background, even with the screen off.</div>
+                  )}
+                </div>
                 <ul className="list scroll">
-                  {state.queue.length === 0 && <div className="empty-hint">The queue is empty — add a song, or vote one up.</div>}
+                  {state.queue.length === 0 && <div className="empty-hint">Nothing queued yet — the next song you add starts playing right away.</div>}
                   {state.queue.map((q, i) => (
                     <li key={q.id} className="row queue-item">
                       <span className="idx">{i + 1}</span>
@@ -529,27 +573,6 @@ export default function Room({
                     </li>
                   ))}
                 </ul>
-                {user && (
-                  <div className="mymusic">
-                    <h4>My music</h4>
-                    {library.length === 0 && (
-                      <div className="empty-hint">Upload a song you own — it plays for everyone, and keeps playing in the background even with the screen off.</div>
-                    )}
-                    <ul className="list">
-                      {library.map((t) => (
-                        <li key={t.id} className="row">
-                          <span className="grow">{t.title}</span>
-                          <button className="vote" onClick={() => addLibTrack(t)} title="Add to queue">+ Queue</button>
-                          <button className="iconbtn" onClick={() => deleteTrack(t.id)} title="Delete track">✕</button>
-                        </li>
-                      ))}
-                    </ul>
-                    <label className="upload-btn">
-                      {uploading ? 'Uploading…' : '⬆ Upload a song (mp3 / m4a, up to 12 MB)'}
-                      <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
-                    </label>
-                  </div>
-                )}
               </>
             )}
 
@@ -566,40 +589,6 @@ export default function Room({
             )}
           </div>
 
-          <div className="card panel">
-            <div className="addbar">
-              <input value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') addSong(); }}
-                placeholder="Paste a YouTube link…" />
-              <button className="primary" onClick={addSong}>Add to queue</button>
-            </div>
-            <div className="addbar-lib">
-              {user ? (
-                <>
-                  {library.length > 0 && (
-                    <select
-                      className="control-select"
-                      defaultValue=""
-                      onChange={(e) => {
-                        const t = library.find((x) => x.id === e.target.value);
-                        if (t) addLibTrack(t);
-                        e.target.value = '';
-                      }}
-                    >
-                      <option value="" disabled>🎵 Queue from My Music…</option>
-                      {library.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
-                    </select>
-                  )}
-                  <label className="upload-btn slim">
-                    {uploading ? 'Uploading…' : '⬆ Upload a song'}
-                    <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
-                  </label>
-                </>
-              ) : (
-                <p className="muted">Sign in to upload your own songs — they keep playing in the background.</p>
-              )}
-            </div>
-          </div>
         </aside>
       </div>
     </div>
