@@ -21,6 +21,7 @@ export default function App() {
   const [deepCode, setDeepCode] = useState<string | null>(codeFromPath());
   const [notice, setNotice] = useState('');
   const [askExit, setAskExit] = useState(false);
+  const [askLeave, setAskLeave] = useState(false);
 
   // Which screen is showing — drives both rendering and Back behaviour.
   const view: 'room' | 'loading' | 'deepJoin' | 'lobby' | 'auth' =
@@ -38,22 +39,38 @@ export default function App() {
   // screen back ourselves. At the first screen we ask before exiting.
   const backRef = useRef<() => boolean>(() => false);
   backRef.current = () => {
-    if (room) { leaveRoom(); return true; }              // room → lobby
+    // Leaving a room is disruptive for everyone in it, so confirm first.
+    if (room) { setAskLeave(true); return true; }
     if (deepCode) { setDeepCode(null); return true; }    // invite screen → lobby/auth
     if (enteredAsGuest && !user) { setEnteredAsGuest(false); return true; } // lobby → sign in
     return false;                                        // at home
   };
 
   useEffect(() => {
+    const armed = () => (window.history.state as { wlBack?: boolean } | null)?.wlBack === true;
     const arm = () => window.history.pushState({ wlBack: true }, '');
-    arm();
+    if (!armed()) arm();
     function onPop() {
       const handled = backRef.current();
       if (!handled) setAskExit(true);
       arm(); // re-arm so the next Back press is ours too
     }
+    // Coming back from the background (or a restored WebView) can leave us
+    // without the sentinel — without this, the next Back closes the app and the
+    // exit prompt never appears again.
+    function reArm() {
+      if (document.visibilityState === 'visible' && !armed()) arm();
+    }
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    document.addEventListener('visibilitychange', reArm);
+    window.addEventListener('pageshow', reArm);
+    window.addEventListener('focus', reArm);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      document.removeEventListener('visibilitychange', reArm);
+      window.removeEventListener('pageshow', reArm);
+      window.removeEventListener('focus', reArm);
+    };
   }, []);
 
   // The server evicts a prior session when this account opens the room elsewhere.
@@ -115,6 +132,19 @@ export default function App() {
         </div>
       )}
       {screen}
+
+      {askLeave && (
+        <div className="modal-backdrop" onClick={() => setAskLeave(false)}>
+          <div className="modal card" onClick={(e) => e.stopPropagation()}>
+            <h3>Leave this room?</h3>
+            <p className="muted">You'll stop listening together. The room stays open for everyone else.</p>
+            <div className="modal-actions">
+              <button className="ghost" onClick={() => setAskLeave(false)}>Keep listening</button>
+              <button className="primary" onClick={() => { setAskLeave(false); leaveRoom(); }}>Leave</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {askExit && (
         <div className="modal-backdrop" onClick={() => setAskExit(false)}>

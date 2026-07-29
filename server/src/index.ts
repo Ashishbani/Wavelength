@@ -413,9 +413,20 @@ export async function createServer(port = 3001, injectedDb?: DB, options?: { sen
   // In local dev the client runs on Vite (5173) and no dist exists, so this is skipped.
   const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');
   if (fs.existsSync(path.join(clientDist, 'index.html'))) {
-    app.use(express.static(clientDist));
+    // Asset filenames are content-hashed, so they can cache forever — but the
+    // HTML that points at them must never be cached, or a client (notably the
+    // Android WebView, which caches far more aggressively than a browser) keeps
+    // running an old bundle long after a deploy.
+    app.use(express.static(clientDist, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store, must-revalidate');
+        else if (/\/assets\//.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      },
+    }));
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
+      res.setHeader('Cache-Control', 'no-store, must-revalidate');
       res.sendFile(path.join(clientDist, 'index.html'));
     });
   }

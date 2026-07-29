@@ -1,16 +1,15 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from './auth/AuthContext.js';
-import { apiGet, apiDelete, apiUpload } from './auth/api.js';
-import { WaveIcon, AddSongIcon, HeartIcon } from './room/icons.js';
+import { apiGet, apiDelete } from './auth/api.js';
+import { HeartIcon } from './room/icons.js';
 import { listFavourites, removeFavourite, type Favourite } from './lib/favourites.js';
 import type { TrackKind } from '@wavelength/shared';
 
 interface SavedRoom { code: string; name: string; }
 interface Playlist { id: string; name: string; items: { videoId: string; title: string }[]; }
 interface HistoryEntry { videoId: string; title: string; playedAt: number; }
-interface Track { id: string; title: string; }
 
-type LibTab = 'saved' | 'uploads' | 'playlists' | 'history';
+type LibTab = 'saved' | 'playlists' | 'history';
 
 export default function AccountPanel({
   onJoin,
@@ -26,17 +25,13 @@ export default function AccountPanel({
   const [rooms, setRooms] = useState<SavedRoom[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [tracks, setTracks] = useState<Track[]>([]);
   const [favourites, setFavourites] = useState<Favourite[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadPct, setUploadPct] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     apiGet<{ rooms: SavedRoom[] }>('/api/rooms').then((r) => setRooms(r.rooms)).catch(() => {});
     apiGet<{ playlists: Playlist[] }>('/api/playlists').then((r) => setPlaylists(r.playlists)).catch(() => {});
     apiGet<{ history: HistoryEntry[] }>('/api/history').then((r) => setHistory(r.history)).catch(() => {});
-    apiGet<{ tracks: Track[] }>('/api/library').then((r) => setTracks(r.tracks)).catch(() => {});
     listFavourites().then((r) => setFavourites(r.favourites)).catch(() => {});
   }, [user]);
 
@@ -53,28 +48,6 @@ export default function AccountPanel({
   async function unfavourite(videoId: string) {
     await removeFavourite(videoId);
     setFavourites((prev) => prev.filter((f) => f.videoId !== videoId));
-  }
-  async function removeTrack(id: string) {
-    await apiDelete(`/api/library/${id}`);
-    setTracks((prev) => prev.filter((t) => t.id !== id));
-  }
-  async function onPickFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setUploading(true);
-    setUploadPct(0);
-    try {
-      const title = file.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Untitled';
-      await apiUpload(`/api/library?title=${encodeURIComponent(title)}`, file, setUploadPct);
-      const r = await apiGet<{ tracks: Track[] }>('/api/library');
-      setTracks(r.tracks);
-    } catch (err) {
-      window.alert((err as Error).message);
-    } finally {
-      setUploading(false);
-      setUploadPct(0);
-    }
   }
 
   return (
@@ -100,7 +73,6 @@ export default function AccountPanel({
           <button className={tab === 'saved' ? 'active' : ''} onClick={() => setTab('saved')}>
             <HeartIcon filled={tab === 'saved'} size={13} /> Saved
           </button>
-          <button className={tab === 'uploads' ? 'active' : ''} onClick={() => setTab('uploads')}>Uploads</button>
           <button className={tab === 'playlists' ? 'active' : ''} onClick={() => setTab('playlists')}>Playlists</button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>History</button>
         </div>
@@ -118,31 +90,6 @@ export default function AccountPanel({
             {favourites.length === 0 && (
               <p className="empty-hint">Tap <b>Save</b> on a playing song and it lands here — ready to play again in one tap.</p>
             )}
-          </>
-        )}
-
-        {tab === 'uploads' && (
-          <>
-            <ul className="list lib-scroll">{tracks.map((t) => (
-              <li key={t.id} className="row">
-                <span className="lib-mark"><WaveIcon size={12} /></span>
-                <span className="grow">{t.title}</span>
-                <button className="chip join" onClick={() => onPlayTrack({ videoId: t.id, title: t.title, kind: 'lib' })} title="Play in a new room">Play</button>
-                <button className="iconbtn" onClick={() => removeTrack(t.id)} title="Delete">✕</button>
-              </li>
-            ))}</ul>
-            {tracks.length === 0 && (
-              <p className="empty-hint">Your own songs — these keep playing in the background, even with the screen off.</p>
-            )}
-            <label className={uploading ? 'upload-btn busy' : 'upload-btn'}>
-              {uploading && <span className="upload-fill" style={{ width: `${uploadPct}%` }} />}
-              <span className="upload-label">
-                {uploading
-                  ? (uploadPct >= 100 ? 'Saving…' : `Uploading… ${uploadPct}%`)
-                  : <><AddSongIcon /> Upload a song · mp3 / m4a, up to 12 MB</>}
-              </span>
-              <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
-            </label>
           </>
         )}
 

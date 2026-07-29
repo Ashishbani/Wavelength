@@ -1,5 +1,17 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { apiGet, apiPost, apiPut } from './api.js';
+import socket from '../socket.js';
+
+/**
+ * The socket's identity is fixed at handshake time from the auth cookie, so a
+ * connection opened before signing in stays anonymous — the server wouldn't
+ * attribute rooms, history or favourites to the account, and queued emits could
+ * stall. Reconnect whenever the signed-in identity changes.
+ */
+function refreshSocketIdentity(): void {
+  socket.disconnect();
+  socket.connect();
+}
 
 export interface AuthUser { id: string; email: string; displayName: string; username: string | null; }
 
@@ -29,14 +41,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     const u = await apiPost<AuthUser>('/api/auth/login', { email, password });
     setUser(u);
+    refreshSocketIdentity();
   }
   async function register(email: string, password: string, displayName: string) {
     const u = await apiPost<AuthUser>('/api/auth/register', { email, password, displayName });
     setUser(u);
+    refreshSocketIdentity();
   }
   async function logout() {
     await apiPost('/api/auth/logout', {});
     setUser(null);
+    refreshSocketIdentity();
   }
   async function refresh() {
     const r = await apiGet<{ user: AuthUser | null }>('/api/auth/me');

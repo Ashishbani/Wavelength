@@ -129,4 +129,8 @@ export async function migrate(db: DB): Promise<void> {
     await db.execute('ALTER TABLE users ADD COLUMN username TEXT');
   }
   await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)');
+  // Per-user lookups are the only access pattern for these tables.
+  await db.execute('CREATE INDEX IF NOT EXISTS idx_history_user ON history(user_id, played_at DESC)');
+  await db.execute('CREATE INDEX IF NOT EXISTS idx_favourites_user ON favourites(user_id, created_at DESC)');
+  await db.execute('CREATE INDEX IF NOT EXISTS idx_tracks_owner ON tracks(owner_user_id, created_at DESC)');
 }

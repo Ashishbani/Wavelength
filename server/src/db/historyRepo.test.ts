@@ -21,6 +21,15 @@ describe('historyRepo', () => {
     expect(list[0].title).toBe('Second');
   });
 
+  it('lists a replayed track once, at its latest play time', async () => {
+    await repo.add(uid, 'dQw4w9WgXcQ', 'Repeat');
+    await repo.add(uid, 'oHg5SJYRHA0', 'Other');
+    await repo.add(uid, 'dQw4w9WgXcQ', 'Repeat'); // played again
+    await repo.add(uid, 'dQw4w9WgXcQ', 'Repeat'); // and again
+    const list = await repo.listByUser(uid);
+    expect(list.map((h) => h.title)).toEqual(['Repeat', 'Other']); // no duplicates
+  });
+
   it('scopes history to the user', async () => {
     const other = (await createUserRepo(db).create('b@b.com', 'h', 'Bob')).id;
     await repo.add(uid, 'dQw4w9WgXcQ', 'Mine');
