@@ -48,6 +48,30 @@ export default function Room({
   const [chatText, setChatText] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [tab, setTab] = useState<'queue' | 'chat' | 'people'>('chat');
+  // Unread markers for tabs you aren't looking at.
+  const [unreadChat, setUnreadChat] = useState(0);
+  const [newPeople, setNewPeople] = useState(0);
+  const tabRef = useRef<'queue' | 'chat' | 'people'>('chat');
+  tabRef.current = tab;
+  // Member identities last seen, so we can spot who newly joined.
+  const memberKeysRef = useRef<Set<string>>(new Set(initialState.members.map((m) => m.seat ?? m.id)));
+
+  /** Switch tabs and clear that tab's unread marker. */
+  function selectTab(t: 'queue' | 'chat' | 'people') {
+    setTab(t);
+    if (t === 'chat') setUnreadChat(0);
+    if (t === 'people') setNewPeople(0);
+  }
+
+  /** Apply a room state, flagging people who joined while you were elsewhere. */
+  function applyRoomState(s: RoomState) {
+    const keys = new Set(s.members.map((m) => m.seat ?? m.id));
+    let joined = 0;
+    for (const k of keys) if (!memberKeysRef.current.has(k)) joined += 1;
+    memberKeysRef.current = keys;
+    if (joined > 0 && tabRef.current !== 'people') setNewPeople((n) => n + joined);
+    setState(s);
+  }
   const [addMode, setAddMode] = useState<'yt' | 'lib'>('yt');
   const [isPlaying, setIsPlaying] = useState(false);
   // What the local YouTube player is actually doing (vs. isPlaying = the shared
@@ -207,12 +231,15 @@ export default function Room({
   useEffect(() => {
     const onUpdate = (pb: PlaybackState) => applyPlayback(pb, true);
     const onSync = (pb: PlaybackState) => applyPlayback(pb, false);
-    socket.on('room:state', setState);
+    socket.on('room:state', applyRoomState);
     socket.on('playback:update', onUpdate);
     socket.on('playback:sync', onSync);
-    socket.on('chat:message', (m) => setMessages((prev) => [...prev, m].slice(-200)));
+    socket.on('chat:message', (m) => {
+      setMessages((prev) => [...prev, m].slice(-200));
+      if (tabRef.current !== 'chat') setUnreadChat((n) => n + 1);
+    });
     return () => {
-      socket.off('room:state', setState);
+      socket.off('room:state', applyRoomState);
       socket.off('playback:update', onUpdate);
       socket.off('playback:sync', onSync);
       socket.off('chat:message');
@@ -259,7 +286,7 @@ export default function Room({
         (res: CreateJoinResult) => {
           if (res.ok) {
             setSelfId(res.selfId);
-            setState(res.state);
+            applyRoomState(res.state);
             applyPlayback(res.state.playback, true);
           } else {
             onLeave(); // the room expired while we were away
@@ -496,7 +523,7 @@ export default function Room({
                 <button
                   className="primary"
                   style={{ marginTop: 6 }}
-                  onClick={() => { setTab('queue'); sideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+                  onClick={() => { selectTab('queue'); sideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
                 >+ Add the first song</button>
               </div>
             </div>
@@ -548,9 +575,13 @@ export default function Room({
         <aside className="side" ref={sideRef}>
           <div className="card panel chat-panel">
             <div className="tabs">
-              <button className={tab === 'chat' ? 'active' : ''} onClick={() => setTab('chat')}>Chat</button>
-              <button className={tab === 'queue' ? 'active' : ''} onClick={() => setTab('queue')}>Queue · {state.queue.length}</button>
-              <button className={tab === 'people' ? 'active' : ''} onClick={() => setTab('people')}>People · {state.members.length}</button>
+              <button className={tab === 'chat' ? 'active' : ''} onClick={() => selectTab('chat')}>
+                Chat{unreadChat > 0 && <span className="tab-badge">{unreadChat > 9 ? '9+' : unreadChat}</span>}
+              </button>
+              <button className={tab === 'queue' ? 'active' : ''} onClick={() => selectTab('queue')}>Queue · {state.queue.length}</button>
+              <button className={tab === 'people' ? 'active' : ''} onClick={() => selectTab('people')}>
+                People · {state.members.length}{newPeople > 0 && <span className="tab-badge">+{newPeople > 9 ? '9+' : newPeople}</span>}
+              </button>
             </div>
 
             {tab === 'chat' && (
