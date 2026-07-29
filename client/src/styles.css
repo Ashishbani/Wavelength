@@ -553,6 +553,27 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .modal-actions { display: flex; gap: 10px; justify-content: center; }
 .modal-actions button { flex: 1; max-width: 145px; padding: 11px 14px; font-size: 14px; }
 
+/* Content dialogs (playlist save / pick) — wider and left-aligned, with a
+   titlebar and close button, unlike the small centred confirmations. */
+.modal-panel { max-width: 400px; text-align: left; padding: 18px 20px 20px; }
+.modal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.modal-head h3 { flex: 1; font-size: 17px; margin: 0; }
+.modal-x { font-size: 14px; padding: 4px 6px; }
+.modal-x:hover { color: var(--text); }
+.modal-sub { margin: 0 0 14px; font-size: 13px; }
+.modal-field { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 14px; }
+.modal-field input { width: 100%; margin-top: 6px; font-size: 14px; }
+.modal-list {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;
+  max-height: 250px; overflow-y: auto;
+}
+.modal-list .row { background: rgba(0, 0, 0, 0.22); font-size: 13px; }
+.modal-list.pick .row { cursor: pointer; }
+.modal-list.pick .row:hover { background: rgba(139, 92, 255, 0.14); }
+.modal-more { color: var(--faint); font-size: 12px; padding: 4px 10px; }
+.modal-panel .modal-actions { justify-content: flex-end; margin-top: 16px; }
+.modal-panel .modal-actions button { flex: 0 0 auto; max-width: none; padding: 9px 18px; }
+
 /* ============================================================
    Toasts
    ============================================================ */

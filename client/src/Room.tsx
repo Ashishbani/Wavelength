@@ -14,6 +14,7 @@ import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon, LinkIcon, LeaveIc
 import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 import { clientSessionId } from './lib/session.js';
 import { listFavourites, addFavourite, removeFavourite } from './lib/favourites.js';
+import Modal from './ui/Modal.js';
 
 const AV_COLORS = ['#8b5cff', '#ff5ca8', '#3ddc97', '#ffb14e', '#4ea8ff', '#c65cff'];
 function avatarColor(s: string): string {
@@ -106,16 +107,46 @@ export default function Room({
     }
   }, [user]);
 
-  async function saveQueueAsPlaylist() {
-    const name = window.prompt('Playlist name?');
-    if (!name) return;
+  // Playlist dialogs (no window.prompt / native select — see ui/Modal).
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [loadOpen, setLoadOpen] = useState(false);
+  const [playlistName, setPlaylistName] = useState('');
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  /** Tracks a save would capture: the current song first, then the queue. */
+  function queueSnapshot(): { videoId: string; title: string }[] {
     const items = state.queue.map((q) => ({ videoId: q.videoId, title: q.title }));
-    if (state.playback.videoId) items.unshift({ videoId: state.playback.videoId, title: title || state.playback.videoId });
-    await apiPost('/api/playlists', { name, items });
-    const r = await apiGet<{ playlists: { id: string; name: string }[] }>('/api/playlists');
-    setPlaylists(r.playlists);
+    if (state.playback.videoId) items.unshift({ videoId: state.playback.videoId, title: title || state.playback.title || state.playback.videoId });
+    return items;
   }
-  function loadPlaylist(id: string) { socket.emit('queue:loadPlaylist', { playlistId: id }); }
+
+  function openSavePlaylist() {
+    setPlaylistName(`${myName}'s mix`);
+    setSaveError('');
+    setSaveOpen(true);
+  }
+
+  async function confirmSavePlaylist() {
+    const name = playlistName.trim();
+    if (!name) { setSaveError('Give the playlist a name.'); return; }
+    setSaveBusy(true); setSaveError('');
+    try {
+      await apiPost('/api/playlists', { name, items: queueSnapshot() });
+      const r = await apiGet<{ playlists: { id: string; name: string }[] }>('/api/playlists');
+      setPlaylists(r.playlists);
+      setSaveOpen(false);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Could not save the playlist.');
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
+  function loadPlaylist(id: string) {
+    socket.emit('queue:loadPlaylist', { playlistId: id });
+    setLoadOpen(false);
+  }
 
   // My Music — uploaded tracks that play via <audio>, which (unlike YouTube
   // embeds) keeps playing in the background and with the screen off.
@@ -677,14 +708,12 @@ export default function Room({
                     transport controls where they crowded the player. */}
                 {user && (
                   <div className="queue-actions">
-                    <button className="ghost sm-btn" onClick={saveQueueAsPlaylist}
+                    <button className="ghost sm-btn" onClick={openSavePlaylist}
                       disabled={!hasVideo && state.queue.length === 0}
                       title="Save this queue as a playlist">Save as playlist</button>
                     {playlists.length > 0 && (
-                      <select className="control-select" onChange={(e) => { if (e.target.value) loadPlaylist(e.target.value); e.target.value = ''; }} defaultValue="">
-                        <option value="" disabled>Load playlist…</option>
-                        {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
+                      <button className="ghost sm-btn" onClick={() => setLoadOpen(true)}
+                        title="Add a saved playlist to the queue">Load playlist</button>
                     )}
                   </div>
                 )}
@@ -706,6 +735,62 @@ export default function Room({
 
         </aside>
       </div>
+
+      {saveOpen && (
+        <Modal
+          title="Save as playlist"
+          subtitle={`${queueSnapshot().length} track${queueSnapshot().length === 1 ? '' : 's'} — the song playing now, then everything queued.`}
+          onClose={() => setSaveOpen(false)}
+          actions={
+            <>
+              <button className="ghost sm-btn" onClick={() => setSaveOpen(false)}>Cancel</button>
+              <button className="primary sm-btn" onClick={() => void confirmSavePlaylist()} disabled={saveBusy || !playlistName.trim()}>
+                {saveBusy ? 'Saving…' : 'Save'}
+              </button>
+            </>
+          }
+        >
+          <label className="modal-field">
+            Playlist name
+            <input
+              value={playlistName}
+              onChange={(e) => setPlaylistName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void confirmSavePlaylist(); }}
+              maxLength={60}
+              autoFocus
+              placeholder="e.g. Friday night"
+            />
+          </label>
+          <ul className="modal-list">
+            {queueSnapshot().slice(0, 4).map((t, i) => (
+              <li key={i} className="row"><span className="idx">{i + 1}</span><span className="grow">{t.title}</span></li>
+            ))}
+            {queueSnapshot().length > 4 && (
+              <li className="modal-more">+{queueSnapshot().length - 4} more</li>
+            )}
+          </ul>
+          {saveError && <p className="error">{saveError}</p>}
+        </Modal>
+      )}
+
+      {loadOpen && (
+        <Modal
+          title="Load a playlist"
+          subtitle="Its tracks are added to the end of the queue."
+          onClose={() => setLoadOpen(false)}
+        >
+          <ul className="modal-list pick">
+            {playlists.map((p) => (
+              <li key={p.id} className="row click" onClick={() => loadPlaylist(p.id)}>
+                <span className="lib-mark"><WaveIcon size={12} /></span>
+                <span className="grow">{p.name}</span>
+                <span className="chip join">Add</span>
+              </li>
+            ))}
+          </ul>
+          {playlists.length === 0 && <p className="empty-hint">No playlists yet — save a queue first.</p>}
+        </Modal>
+      )}
     </div>
   );
 }
