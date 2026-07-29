@@ -447,12 +447,12 @@ button.link:hover { background: none; filter: brightness(1.2); }
 
 /* transport */
 .transport { display: flex; align-items: center; justify-content: center; gap: 16px; }
-/* Queue-tab playlist actions, pinned below the list */
+/* Queue-tab playlist actions, centred below the list */
 .queue-actions {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
   margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
 }
-.queue-actions .control-select { flex: 1; min-width: 0; }
+.queue-actions .control-select { min-width: 0; max-width: 190px; }
 .play-btn {
   width: 54px; height: 54px; border-radius: 50%; border: none;
   background: var(--grad); color: white;
