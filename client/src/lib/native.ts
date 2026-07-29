@@ -14,6 +14,8 @@ interface AppPlugin {
 interface CapacitorBridge {
   isNativePlatform?: () => boolean;
   Plugins?: { App?: AppPlugin };
+  /** Low-level bridge listener API (present in the native runtime). */
+  addListener?: (plugin: string, event: string, cb: () => void) => ListenerHandle;
 }
 
 function bridge(): CapacitorBridge | undefined {
@@ -32,16 +34,40 @@ export function isNativeApp(): boolean {
  * Returns a cleanup function; a no-op in the browser.
  */
 export function onNativeBack(handler: () => void): () => void {
-  const app = bridge()?.Plugins?.App;
-  if (!app?.addListener) return () => {};
-  let handle: ListenerHandle | undefined;
-  const res = app.addListener('backButton', () => handler());
-  if (res && typeof (res as Promise<ListenerHandle>).then === 'function') {
-    void (res as Promise<ListenerHandle>).then((h) => { handle = h; });
-  } else {
-    handle = res as ListenerHandle;
-  }
-  return () => { void handle?.remove?.(); };
+  const cap = bridge();
+  if (!cap) return () => {};
+
+  // A single press can arrive on more than one channel; those duplicates land in
+  // the same tick, so collapse only near-simultaneous calls — a window long
+  // enough to swallow a genuine second press would break rapid Back taps.
+  let last = 0;
+  const fire = () => {
+    const now = Date.now();
+    if (now - last < 50) return;
+    last = now;
+    handler();
+  };
+
+  const handles: ListenerHandle[] = [];
+  const keep = (res: ListenerHandle | Promise<ListenerHandle> | undefined) => {
+    if (!res) return;
+    if (typeof (res as Promise<ListenerHandle>).then === 'function') {
+      void (res as Promise<ListenerHandle>).then((h) => { if (h) handles.push(h); });
+    } else {
+      handles.push(res as ListenerHandle);
+    }
+  };
+
+  // Register on every channel the native shell may deliver Back through, so the
+  // app never falls back to its own (unreliable) history handling.
+  try { keep(cap.Plugins?.App?.addListener?.('backButton', fire)); } catch { /* not available */ }
+  try { keep(cap.addListener?.('App', 'backButton', fire)); } catch { /* not available */ }
+  document.addEventListener('backbutton', fire); // legacy/Cordova-style event
+
+  return () => {
+    for (const h of handles) { try { void h.remove?.(); } catch { /* ignore */ } }
+    document.removeEventListener('backbutton', fire);
+  };
 }
 
 /** Close the native app; in a browser, close/blank the tab as best we can. */

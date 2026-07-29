@@ -149,10 +149,10 @@ export default function App() {
         <div className="modal-backdrop" onClick={() => setAskLeave(false)}>
           <div className="modal card" onClick={(e) => e.stopPropagation()}>
             <h3>Leave this room?</h3>
-            <p className="muted">You'll stop listening together. The room stays open for everyone else.</p>
+            <p className="muted">The room stays open for everyone else.</p>
             <div className="modal-actions">
-              <button className="ghost" onClick={() => setAskLeave(false)}>Keep listening</button>
-              <button className="primary" onClick={() => { setAskLeave(false); leaveRoom(); }}>Leave</button>
+              <button className="ghost sm-btn" onClick={() => setAskLeave(false)}>Stay</button>
+              <button className="primary sm-btn" onClick={() => { setAskLeave(false); leaveRoom(); }}>Leave</button>
             </div>
           </div>
         </div>
@@ -162,10 +162,10 @@ export default function App() {
         <div className="modal-backdrop" onClick={() => setAskLogout(false)}>
           <div className="modal card" onClick={(e) => e.stopPropagation()}>
             <h3>Log out?</h3>
-            <p className="muted">You'll need to sign in again to reach your library.</p>
+            <p className="muted">You'll need to sign in again.</p>
             <div className="modal-actions">
-              <button className="ghost" onClick={() => setAskLogout(false)}>Stay signed in</button>
-              <button className="primary" onClick={() => {
+              <button className="ghost sm-btn" onClick={() => setAskLogout(false)}>Stay</button>
+              <button className="primary sm-btn" onClick={() => {
                 setAskLogout(false);
                 setEnteredAsGuest(false);
                 void logout();
@@ -181,8 +181,8 @@ export default function App() {
             <h3>Leave Wavelength?</h3>
             <p className="muted">{isNativeApp() ? 'Close the app?' : 'You can come back any time.'}</p>
             <div className="modal-actions">
-              <button className="ghost" onClick={() => setAskExit(false)}>Stay</button>
-              <button className="primary" onClick={() => { setAskExit(false); exitApp(); }}>
+              <button className="ghost sm-btn" onClick={() => setAskExit(false)}>Stay</button>
+              <button className="primary sm-btn" onClick={() => { setAskExit(false); exitApp(); }}>
                 {isNativeApp() ? 'Exit' : 'Close'}
               </button>
             </div>
