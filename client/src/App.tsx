@@ -6,7 +6,7 @@ import Auth from './Auth.js';
 import Lobby from './Lobby.js';
 import Room from './Room.js';
 import DeepJoin from './DeepJoin.js';
-import { exitApp, isNativeApp } from './lib/native.js';
+import { exitApp, isNativeApp, onNativeBack } from './lib/native.js';
 
 function codeFromPath(): string | null {
   const m = window.location.pathname.match(/^\/r\/([A-Za-z0-9]{1,12})$/);
@@ -40,6 +40,8 @@ export default function App() {
   // screen back ourselves. At the first screen we ask before exiting.
   const backRef = useRef<() => boolean>(() => false);
   backRef.current = () => {
+    // An open dialog absorbs Back (dismiss it) instead of stacking prompts.
+    if (askExit || askLeave || askLogout) { setAskExit(false); setAskLeave(false); setAskLogout(false); return true; }
     // Leaving a room is disruptive for everyone in it, so confirm first.
     if (room) { setAskLeave(true); return true; }
     if (deepCode) { setDeepCode(null); return true; }    // invite screen → lobby/auth
@@ -68,11 +70,18 @@ export default function App() {
     document.addEventListener('visibilitychange', reArm);
     window.addEventListener('pageshow', reArm);
     window.addEventListener('focus', reArm);
+    // In the native app the hardware Back button is delivered here instead —
+    // no dependence on the WebView's history stack, which is what broke after
+    // relaunching the app.
+    const offNative = onNativeBack(() => {
+      if (!backRef.current()) setAskExit(true);
+    });
     return () => {
       window.removeEventListener('popstate', onPop);
       document.removeEventListener('visibilitychange', reArm);
       window.removeEventListener('pageshow', reArm);
       window.removeEventListener('focus', reArm);
+      offNative();
     };
   }, []);
 
