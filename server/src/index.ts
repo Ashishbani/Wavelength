@@ -366,7 +366,7 @@ export async function createServer(port = 3001, injectedDb?: DB, options?: { sen
       if (!playlist || playlist.ownerUserId !== userId) return;
       const addedBy = nameOf(socket.id, room.code);
       for (const it of playlist.items) {
-        rooms.addToQueue(room.code, { videoId: it.videoId, title: it.title, addedBy });
+        rooms.addToQueue(room.code, { videoId: it.videoId, title: it.title, addedBy, kind: it.kind ?? 'yt' });
       }
       const updated = rooms.getRoom(room.code);
       if (updated) io.to(room.code).emit('room:state', updated);

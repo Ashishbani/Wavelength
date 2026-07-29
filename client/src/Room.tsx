@@ -7,7 +7,7 @@ import AudioPlayer from './AudioPlayer.js';
 import { useClockOffset } from './useClockOffset.js';
 import { parseVideoId } from './parseVideoId.js';
 import { useAuth } from './auth/AuthContext.js';
-import { apiGet, apiPost, apiDelete, apiUpload } from './auth/api.js';
+import { apiGet, apiPost, apiDelete, apiUpload, UploadAbortedError } from './auth/api.js';
 import { getFriends, type FriendSummary } from './friends/api.js';
 import { usePresence } from './friends/usePresence.js';
 import { PrevIcon, NextIcon, PlayIcon, PauseIcon, AddSongIcon, LinkIcon, LeaveIcon, WaveIcon, EqBars, HeartIcon } from './room/icons.js';
@@ -115,9 +115,16 @@ export default function Room({
   const [saveError, setSaveError] = useState('');
 
   /** Tracks a save would capture: the current song first, then the queue. */
-  function queueSnapshot(): { videoId: string; title: string }[] {
-    const items = state.queue.map((q) => ({ videoId: q.videoId, title: q.title }));
-    if (state.playback.videoId) items.unshift({ videoId: state.playback.videoId, title: title || state.playback.title || state.playback.videoId });
+  function queueSnapshot(): { videoId: string; title: string; kind: 'yt' | 'lib' }[] {
+    // kind matters: uploaded tracks must come back as uploads, not YouTube ids.
+    const items = state.queue.map((q) => ({ videoId: q.videoId, title: q.title, kind: q.kind ?? 'yt' as const }));
+    if (state.playback.videoId) {
+      items.unshift({
+        videoId: state.playback.videoId,
+        title: title || state.playback.title || state.playback.videoId,
+        kind: state.playback.kind ?? 'yt',
+      });
+    }
     return items;
   }
 
@@ -154,6 +161,7 @@ export default function Room({
   const [library, setLibrary] = useState<{ id: string; title: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
+  const uploadAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (user) {
       listFavourites().then((r) => setFavIds(new Set(r.favourites.map((f) => f.videoId)))).catch(() => {});
@@ -194,16 +202,22 @@ export default function Room({
     if (!file) return;
     setUploading(true);
     setUploadPct(0);
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
     try {
       const trackTitle = file.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Untitled';
-      const up = await apiUpload<{ id: string; title: string }>(`/api/library?title=${encodeURIComponent(trackTitle)}`, file, setUploadPct);
+      const up = await apiUpload<{ id: string; title: string }>(
+        `/api/library?title=${encodeURIComponent(trackTitle)}`, file, setUploadPct, controller.signal,
+      );
       const r = await apiGet<{ tracks: { id: string; title: string }[] }>('/api/library');
       setLibrary(r.tracks);
       // Freshly uploaded music should just play — queue it immediately.
       addLibTrack(up);
     } catch (err) {
-      window.alert((err as Error).message);
+      // Cancelling is a choice, not a failure — say nothing.
+      if (!(err instanceof UploadAbortedError)) window.alert((err as Error).message);
     } finally {
+      uploadAbortRef.current = null;
       setUploading(false);
       setUploadPct(0);
     }
@@ -672,15 +686,21 @@ export default function Room({
                           })}
                         </ul>
                       )}
-                      <label className={uploading ? 'upload-btn busy' : 'upload-btn'}>
-                        {uploading && <span className="upload-fill" style={{ width: `${uploadPct}%` }} />}
-                        <span className="upload-label">
-                          {uploading
-                            ? (uploadPct >= 100 ? 'Saving…' : `Uploading… ${uploadPct}%`)
-                            : <><AddSongIcon /> Upload a song · mp3 / m4a, up to 12 MB</>}
-                        </span>
-                        <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
-                      </label>
+                      <div className="upload-row">
+                        <label className={uploading ? 'upload-btn busy' : 'upload-btn'}>
+                          {uploading && <span className="upload-fill" style={{ width: `${uploadPct}%` }} />}
+                          <span className="upload-label">
+                            {uploading
+                              ? (uploadPct >= 100 ? 'Saving…' : `Uploading… ${uploadPct}%`)
+                              : <><AddSongIcon /> Upload a song · mp3 / m4a, up to 12 MB</>}
+                          </span>
+                          <input type="file" accept="audio/*" hidden onChange={onPickFile} disabled={uploading} />
+                        </label>
+                        {uploading && (
+                          <button className="iconbtn upload-cancel" title="Cancel upload"
+                            onClick={() => uploadAbortRef.current?.abort()}>✕</button>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="empty-hint">Sign in to upload your own songs — they keep playing in the background, even with the screen off.</div>

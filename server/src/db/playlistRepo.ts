@@ -4,6 +4,8 @@ import type { DB } from './db.js';
 export interface PlaylistItem {
   videoId: string;
   title: string;
+  /** 'lib' for an uploaded track; absent/'yt' for YouTube. */
+  kind?: 'yt' | 'lib';
 }
 
 export interface Playlist {
@@ -15,12 +17,12 @@ export interface Playlist {
 }
 
 interface PlaylistRow { id: string; owner_user_id: string; name: string; created_at: number; }
-interface ItemRow { video_id: string; title: string; }
+interface ItemRow { video_id: string; title: string; kind?: string; }
 
 export function createPlaylistRepo(db: DB) {
   async function loadItems(playlistId: string): Promise<PlaylistItem[]> {
-    const rs = await db.execute({ sql: 'SELECT video_id, title FROM playlist_items WHERE playlist_id = ? ORDER BY position ASC', args: [playlistId] });
-    return (rs.rows as unknown as ItemRow[]).map((r) => ({ videoId: r.video_id, title: r.title }));
+    const rs = await db.execute({ sql: 'SELECT video_id, title, kind FROM playlist_items WHERE playlist_id = ? ORDER BY position ASC', args: [playlistId] });
+    return (rs.rows as unknown as ItemRow[]).map((r) => ({ videoId: r.video_id, title: r.title, kind: r.kind === 'lib' ? 'lib' : 'yt' }));
   }
   async function hydrate(row: PlaylistRow): Promise<Playlist> {
     return { id: row.id, ownerUserId: row.owner_user_id, name: row.name, createdAt: row.created_at, items: await loadItems(row.id) };
@@ -35,8 +37,8 @@ export function createPlaylistRepo(db: DB) {
         [
           { sql: 'INSERT INTO playlists (id, owner_user_id, name, created_at) VALUES (?, ?, ?, ?)', args: [id, ownerUserId, name, createdAt] },
           ...items.map((it, i) => ({
-            sql: 'INSERT INTO playlist_items (id, playlist_id, video_id, title, position) VALUES (?, ?, ?, ?, ?)',
-            args: [randomUUID(), id, it.videoId, it.title, i],
+            sql: 'INSERT INTO playlist_items (id, playlist_id, video_id, title, position, kind) VALUES (?, ?, ?, ?, ?, ?)',
+            args: [randomUUID(), id, it.videoId, it.title, i, it.kind ?? 'yt'],
           })),
         ],
         'write',

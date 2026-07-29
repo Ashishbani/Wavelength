@@ -17,8 +17,14 @@ export const createRoomSchema = z.object({
 
 export const createPlaylistSchema = z.object({
   name: z.string().trim().min(1).max(60),
+  // videoId is a YouTube id OR an uploaded track's uuid — the old 11-char
+  // YouTube-only rule rejected every queue containing your own music.
   items: z
-    .array(z.object({ videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/), title: z.string().max(200) }))
+    .array(z.object({
+      videoId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+      title: z.string().max(200),
+      kind: z.enum(['yt', 'lib']).optional(),
+    }))
     .max(500),
 });
 

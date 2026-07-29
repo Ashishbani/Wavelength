@@ -34,9 +34,23 @@ export function apiDelete<T>(path: string): Promise<T> {
 }
 /** Upload a raw file body (used by the music library). Uses XHR because fetch
     cannot report upload progress; onProgress gets 0–100 as bytes go out. */
-export function apiUpload<T>(path: string, file: File, onProgress?: (pct: number) => void): Promise<T> {
+export class UploadAbortedError extends Error {
+  constructor() { super('Upload cancelled'); this.name = 'UploadAbortedError'; }
+}
+
+export function apiUpload<T>(
+  path: string,
+  file: File,
+  onProgress?: (pct: number) => void,
+  signal?: AbortSignal,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    if (signal) {
+      if (signal.aborted) { reject(new UploadAbortedError()); return; }
+      signal.addEventListener('abort', () => xhr.abort(), { once: true });
+    }
+    xhr.onabort = () => reject(new UploadAbortedError());
     xhr.open('POST', `${BASE}${path}`);
     xhr.withCredentials = true;
     xhr.setRequestHeader('content-type', file.type || 'application/octet-stream');

@@ -130,6 +130,11 @@ export async function migrate(db: DB): Promise<void> {
   }
   await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username COLLATE NOCASE)');
   // Per-user lookups are the only access pattern for these tables.
+  // Playlists predate uploaded tracks, so older rows have no kind.
+  const plCols = await db.execute('PRAGMA table_info(playlist_items)');
+  if (!plCols.rows.some((c) => (c as { name?: string }).name === 'kind')) {
+    await db.execute("ALTER TABLE playlist_items ADD COLUMN kind TEXT NOT NULL DEFAULT 'yt'");
+  }
   await db.execute('CREATE INDEX IF NOT EXISTS idx_history_user ON history(user_id, played_at DESC)');
   await db.execute('CREATE INDEX IF NOT EXISTS idx_favourites_user ON favourites(user_id, created_at DESC)');
   await db.execute('CREATE INDEX IF NOT EXISTS idx_tracks_owner ON tracks(owner_user_id, created_at DESC)');
