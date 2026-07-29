@@ -14,7 +14,7 @@ function codeFromPath(): string | null {
 }
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [room, setRoom] = useState<RoomState | null>(null);
   const [selfId, setSelfId] = useState<string>('');
   const [enteredAsGuest, setEnteredAsGuest] = useState(false);
@@ -22,6 +22,7 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [askExit, setAskExit] = useState(false);
   const [askLeave, setAskLeave] = useState(false);
+  const [askLogout, setAskLogout] = useState(false);
 
   // Which screen is showing — drives both rendering and Back behaviour.
   const view: 'room' | 'loading' | 'deepJoin' | 'lobby' | 'auth' =
@@ -42,8 +43,10 @@ export default function App() {
     // Leaving a room is disruptive for everyone in it, so confirm first.
     if (room) { setAskLeave(true); return true; }
     if (deepCode) { setDeepCode(null); return true; }    // invite screen → lobby/auth
-    if (enteredAsGuest && !user) { setEnteredAsGuest(false); return true; } // lobby → sign in
-    return false;                                        // at home
+    // Signed in at the lobby: going "back" means ending the session, so ask.
+    if (user) { setAskLogout(true); return true; }
+    if (enteredAsGuest) { setEnteredAsGuest(false); return true; } // guest lobby → sign in
+    return false;                                        // at the sign-in screen
   };
 
   useEffect(() => {
@@ -141,6 +144,23 @@ export default function App() {
             <div className="modal-actions">
               <button className="ghost" onClick={() => setAskLeave(false)}>Keep listening</button>
               <button className="primary" onClick={() => { setAskLeave(false); leaveRoom(); }}>Leave</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {askLogout && (
+        <div className="modal-backdrop" onClick={() => setAskLogout(false)}>
+          <div className="modal card" onClick={(e) => e.stopPropagation()}>
+            <h3>Log out?</h3>
+            <p className="muted">You'll need to sign in again to reach your library.</p>
+            <div className="modal-actions">
+              <button className="ghost" onClick={() => setAskLogout(false)}>Stay signed in</button>
+              <button className="primary" onClick={() => {
+                setAskLogout(false);
+                setEnteredAsGuest(false);
+                void logout();
+              }}>Log out</button>
             </div>
           </div>
         </div>
