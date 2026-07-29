@@ -21,6 +21,7 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   // not carry over between them.
   function switchMode(next: Mode) {
     setMode(next);
+    window.scrollTo(0, 0);
     setEmail(''); setPassword(''); setDisplayName(''); setCode('');
     setCodeSent(false); setError(''); setNotice('');
   }
@@ -30,11 +31,13 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   // signed in with — the reset flow never asks for it again.
   function goForgot() {
     setMode('forgot');
+    window.scrollTo(0, 0);
     setPassword(''); setCode('');
     setCodeSent(false); setError(''); setNotice('');
   }
   function backToLogin() {
     setMode('login');
+    window.scrollTo(0, 0);
     setPassword(''); setCode('');
     setCodeSent(false); setError(''); setNotice('');
   }
