@@ -312,13 +312,17 @@ button.link:hover { background: none; filter: brightness(1.2); }
 /* ============================================================
    Room
    ============================================================ */
-/* Grid, not flex-wrap, at every width: the brand column sizes to its content
-   (so the app name is never clipped), the actions column absorbs the slack and
-   truncates the member name if needed, and code + Leave stay pinned right. */
+/* Wrapping flex rows, so the header degrades instead of colliding: the app name
+   is never clipped, and if the content genuinely can't fit on a line (larger
+   system font sizes scale text inside a WebView, unlike mobile browsers) the
+   right-hand group moves to its own line rather than overlapping the brand. */
 .room-head {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center; gap: 14px; margin-bottom: 20px;
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 10px 14px; margin-bottom: 20px;
 }
+.room-head > .brand-mini { order: 1; }
+.room-head > .head-actions { order: 2; }
+.room-head > .head-right { order: 3; }
 /* Brand reads clearly larger than the surrounding controls, with the live
    equalizer mark beside it (it dances while music plays). */
 .brand-mini { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; }
@@ -341,7 +345,12 @@ button.link:hover { background: none; filter: brightness(1.2); }
    at the extreme right, directly below the Leave button. */
 .head-actions .me-chip { min-width: 0; margin-left: auto; }
 .head-actions .me-chip .me-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.head-right { display: flex; align-items: center; gap: 8px; justify-self: end; flex-shrink: 0; }
+/* Wraps internally as a last resort (very large system text), so Leave can
+   never be pushed off the edge. */
+.head-right {
+  display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end;
+  gap: 8px; margin-left: auto; min-width: 0; flex: 0 1 auto;
+}
 .invite-btn, .leave-btn { display: inline-flex; align-items: center; gap: 7px; }
 .invite-btn svg, .leave-btn svg { flex-shrink: 0; }
 .leave-btn:hover { border-color: rgba(255, 107, 139, 0.55); color: var(--danger); }
@@ -685,14 +694,10 @@ button.link:hover { background: none; filter: brightness(1.2); }
    row 1 (the brand shrinks if space is tight), actions always form row 2 — no
    wrap-threshold fragility as the contents change. */
 @media (max-width: 880px) {
-  /* Two rows: brand + code/Leave on row 1, actions across row 2. */
-  .room-head {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 8px 10px; margin-bottom: 14px;
-  }
-  .brand-mini { grid-column: 1; grid-row: 1; }
-  .head-right { grid-column: 2; grid-row: 1; }
-  .head-actions { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
+  /* Two rows: brand + code/Leave share row 1, actions take row 2. */
+  .room-head { gap: 8px 10px; margin-bottom: 14px; }
+  .room-head > .head-right { order: 2; }
+  .room-head > .head-actions { order: 3; flex-basis: 100%; flex-wrap: wrap; }
 }
 
 @media (max-width: 720px) {
