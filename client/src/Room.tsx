@@ -541,23 +541,6 @@ export default function Room({
               <button className="play-btn" onClick={togglePlay} title={localPlaying ? 'Pause' : 'Play'}>{localPlaying ? <PauseIcon /> : <PlayIcon />}</button>
               <button className="round-btn" onClick={hostNext} title="Next track"><NextIcon /></button>
             </div>
-            {user && (
-              <div className="transport-extra">
-                <button className="ghost" onClick={saveQueueAsPlaylist}>Save queue</button>
-                {playlists.length > 0 && (
-                  <select className="control-select" onChange={(e) => { if (e.target.value) loadPlaylist(e.target.value); e.target.value = ''; }} defaultValue="">
-                    <option value="" disabled>Load playlist…</option>
-                    {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                )}
-                {onlineFriends.length > 0 && (
-                  <select className="control-select" onChange={(e) => { if (e.target.value) inviteFriend(e.target.value); e.target.value = ''; }} defaultValue="">
-                    <option value="" disabled>Invite a friend…</option>
-                    {onlineFriends.map((f) => <option key={f.userId} value={f.userId}>@{f.username}</option>)}
-                  </select>
-                )}
-              </div>
-            )}
           </div>
 
         </section>
@@ -659,6 +642,21 @@ export default function Room({
                     );
                   })}
                 </ul>
+                {/* Playlist actions belong with the queue, not under the
+                    transport controls where they crowded the player. */}
+                {user && (
+                  <div className="queue-actions">
+                    <button className="ghost sm-btn" onClick={saveQueueAsPlaylist}
+                      disabled={!hasVideo && state.queue.length === 0}
+                      title="Save this queue as a playlist">Save as playlist</button>
+                    {playlists.length > 0 && (
+                      <select className="control-select" onChange={(e) => { if (e.target.value) loadPlaylist(e.target.value); e.target.value = ''; }} defaultValue="">
+                        <option value="" disabled>Load playlist…</option>
+                        {playlists.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    )}
+                  </div>
+                )}
               </>
             )}
 

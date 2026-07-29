@@ -447,7 +447,12 @@ button.link:hover { background: none; filter: brightness(1.2); }
 
 /* transport */
 .transport { display: flex; align-items: center; justify-content: center; gap: 16px; }
-.transport-extra { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+/* Queue-tab playlist actions, pinned below the list */
+.queue-actions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+}
+.queue-actions .control-select { flex: 1; min-width: 0; }
 .play-btn {
   width: 54px; height: 54px; border-radius: 50%; border: none;
   background: var(--grad); color: white;
@@ -498,9 +503,10 @@ button.link:hover { background: none; filter: brightness(1.2); }
    message) instead of growing the panel — and the page — with every message. */
 .messages {
   flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-  /* min-height:0 lets it scroll inside whatever height the panel gets; the cap
-     is a backstop so a long chat can never stretch the page. */
-  min-height: 0; max-height: min(62vh, 620px); padding-right: 4px;
+  /* A comfortable baseline height so the chat isn't cramped when the stage is
+     short (nothing playing); it grows with the column when a video is up, and
+     scrolls past either. The cap stops a long chat stretching the page. */
+  min-height: 360px; max-height: min(62vh, 620px); padding-right: 4px;
 }
 .msg { display: flex; gap: 8px; align-items: flex-start; }
 .msg .bubble { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 7px 11px; font-size: 14px; overflow-wrap: anywhere; min-width: 0; }
@@ -738,7 +744,8 @@ button.link:hover { background: none; filter: brightness(1.2); }
   /* Reserve the chat's full height up front on phones: the panel never grows
      or shifts as messages arrive — the list just scrolls. flex-basis would
      override height, so switch the item to fixed sizing here. */
-  .messages { flex: 0 0 auto; height: min(36vh, 340px); }
+  /* min-height would override height, so reset it for the phone layout. */
+  .messages { flex: 0 0 auto; min-height: 0; height: min(42vh, 380px); }
   .lobby, .lobby-side, .lobby-main { min-width: 0; }
 }
 
