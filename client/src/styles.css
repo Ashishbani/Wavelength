@@ -26,6 +26,9 @@
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }
+/* Nothing may push the page sideways — a horizontal scroll would slide the
+   header's brand out of view (seen in the Android app with large system fonts). */
+html, body { max-width: 100%; overflow-x: hidden; }
 
 body {
   margin: 0;
@@ -707,10 +710,15 @@ button.link:hover { background: none; filter: brightness(1.2); }
              calc(14px + env(safe-area-inset-bottom, 0px))
              calc(14px + env(safe-area-inset-left, 0px));
   }
-  .room-head .wordmark { font-size: 21px; }
-  .logo-eq.sm { height: 18px; gap: 2.5px; }
-  .logo-eq.sm span { width: 4px; }
-  .room-badge { font-size: 12px; padding: 5px 10px; }
+  /* Fluid sizes: the header scales with the width it actually has, so a larger
+     system font (WebViews scale text; browsers don't) shrinks the brand instead
+     of shoving the room code and Leave off the screen. */
+  .room-head .wordmark { font-size: clamp(15px, 4.6vw, 21px); }
+  .logo-eq.sm { height: clamp(13px, 4vw, 18px); gap: 2px; }
+  .logo-eq.sm span { width: clamp(3px, 1vw, 4px); }
+  .room-badge { font-size: clamp(11px, 3.2vw, 12px); padding: 5px 9px; }
+  .head-right { flex-wrap: nowrap; }         /* code + Leave stay together */
+  .invite-btn, .leave-btn, .me-chip { font-size: clamp(11px, 3.2vw, 13px); }
   /* Video keeps a clean 16:9 box instead of a tall fixed height. */
   .player-wrap { height: auto; aspect-ratio: 16 / 9; }
   .transport { gap: 12px; }
@@ -757,12 +765,16 @@ button.link:hover { background: none; filter: brightness(1.2); }
 /* Narrowest phones only: show the wave mark alone in the room header — a
    clipped "Wa…" reads worse than no wordmark, and this keeps Room + Leave
    whole on one row. */
-@media (max-width: 380px) {
-  /* Shed the word "Room" (the code is self-evident in a pill) and the Leave
-     label — the app name stays intact. */
+/* Phones: shed the redundant "Room" and "Leave" words (the pill and the door
+   icon carry the meaning) so the brand and the controls always share row 1 —
+   even when a larger system font enlarges everything. */
+@media (max-width: 480px) {
   .room-badge .rb-label { display: none; }
   .leave-btn { gap: 0; padding: 8px 10px; font-size: 0; }
   .leave-btn svg { width: 17px; height: 17px; }
+}
+
+@media (max-width: 380px) {
   /* Bigger, thumb-friendly transport targets. */
   .play-btn { width: 60px; height: 60px; }
   .round-btn { width: 46px; height: 46px; }
