@@ -194,6 +194,38 @@ export class RoomManager {
     return room;
   }
 
+  /** Swap a queued item with its neighbour (dir -1 = earlier, +1 = later). */
+  moveQueueItem(code: string, itemId: string, dir: -1 | 1): RoomState {
+    const room = this.requireRoom(code);
+    const at = room.queue.findIndex((q) => q.id === itemId);
+    const to = at + dir;
+    if (at === -1 || to < 0 || to >= room.queue.length) return room;
+    const [item] = room.queue.splice(at, 1);
+    room.queue.splice(to, 0, item);
+    return room;
+  }
+
+  /**
+   * Drop members whose connection is gone. Without this a member entry can
+   * outlive its socket (a missed disconnect, a reconnect that never re-joined)
+   * and the room keeps looking occupied — showing up in Explore forever.
+   * Returns the codes of rooms that changed.
+   */
+  pruneGhostMembers(isAlive: (socketId: string) => boolean): string[] {
+    const changed: string[] = [];
+    for (const room of this.rooms.values()) {
+      const before = room.members.length;
+      room.members = room.members.filter((m) => isAlive(m.id));
+      if (room.members.length !== before) {
+        if (room.members.length > 0 && !room.members.some((m) => m.id === room.hostId)) {
+          room.hostId = room.members[0].id; // host left with the ghost
+        }
+        changed.push(room.code);
+      }
+    }
+    return changed;
+  }
+
   /** Move a queued item to the front ("play next"). */
   moveToFront(code: string, itemId: string): RoomState {
     const room = this.requireRoom(code);

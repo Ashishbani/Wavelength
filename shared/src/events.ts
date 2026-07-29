@@ -82,6 +82,10 @@ export interface ClientToServerEvents {
   'queue:playNext': (payload: { itemId: string }) => void;
   /** Jump straight to a queued track. */
   'queue:playNow': (payload: { itemId: string }) => void;
+  /** Reorder: move a queued track one place earlier (-1) or later (+1). */
+  'queue:move': (payload: { itemId: string; dir: -1 | 1 }) => void;
+  /** Ask for the current room state (covers a broadcast missed while mounting). */
+  'room:sync': (cb: (state: RoomState | null) => void) => void;
   /** Go back to the previously played track. */
   'playback:previous': () => void;
   'queue:loadPlaylist': (payload: { playlistId: string }) => void;

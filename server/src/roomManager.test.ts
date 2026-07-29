@@ -137,6 +137,37 @@ describe('RoomManager', () => {
     expect(mgr.voteQueueItem('ROOM0', id, 'seat-2').queue[0].votes).toBe(2); // two people
   });
 
+  it('reorders the queue with moveQueueItem', () => {
+    mgr.createRoom('h1', 'Alice');
+    mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });
+    mgr.addToQueue('ROOM0', { videoId: 'oHg5SJYRHA0', title: 'B', addedBy: 'Bob' });
+    mgr.addToQueue('ROOM0', { videoId: 'kJQP7kiw5Fk', title: 'C', addedBy: 'Cara' });
+    const titles = () => mgr.getRoom('ROOM0')!.queue.map((q) => q.title);
+    const cId = mgr.getRoom('ROOM0')!.queue[2].id;
+    expect(mgr.moveQueueItem('ROOM0', cId, -1).queue.map((q) => q.title)).toEqual(['A', 'C', 'B']);
+    expect(mgr.moveQueueItem('ROOM0', cId, 1).queue.map((q) => q.title)).toEqual(['A', 'B', 'C']);
+    // moving past either end is a no-op, not a crash or a duplicate
+    const aId = mgr.getRoom('ROOM0')!.queue[0].id;
+    mgr.moveQueueItem('ROOM0', aId, -1);
+    expect(titles()).toEqual(['A', 'B', 'C']);
+    mgr.moveQueueItem('ROOM0', cId, 1);
+    expect(titles()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('prunes members whose socket has gone, reassigning the host', () => {
+    mgr.createRoom('gone-1', 'Alice');           // host, will vanish
+    mgr.joinRoom('ROOM0', 'live-1', 'Bob');
+    const alive = (id: string) => id.startsWith('live');
+    expect(mgr.pruneGhostMembers(alive)).toEqual(['ROOM0']);
+    const room = mgr.getRoom('ROOM0')!;
+    expect(room.members.map((m) => m.name)).toEqual(['Bob']);
+    expect(room.hostId).toBe('live-1');          // host moved to the survivor
+    // a room whose members are all gone is emptied (caller then schedules delete)
+    expect(mgr.pruneGhostMembers(() => false)).toEqual(['ROOM0']);
+    expect(mgr.getRoom('ROOM0')!.members).toHaveLength(0);
+    expect(mgr.listPublicRooms()).toEqual([]);   // and never listed in Explore
+  });
+
   it('removes a queued item', () => {
     mgr.createRoom('h1', 'Alice');
     mgr.addToQueue('ROOM0', { videoId: 'dQw4w9WgXcQ', title: 'A', addedBy: 'Alice' });

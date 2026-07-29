@@ -277,6 +277,11 @@ export default function Room({
     const onUpdate = (pb: PlaybackState) => applyPlayback(pb, true);
     const onSync = (pb: PlaybackState) => applyPlayback(pb, false);
     socket.on('room:state', applyRoomState);
+    // Entering a room that was populated in the same tick (e.g. Play from a
+    // playlist) can mean the broadcast arrived before this listener existed.
+    socket.emit('room:sync', (fresh) => {
+      if (fresh) { applyRoomState(fresh); applyPlayback(fresh.playback, true); }
+    });
     socket.on('playback:update', onUpdate);
     socket.on('playback:sync', onSync);
     socket.on('chat:message', (m) => {
@@ -707,7 +712,19 @@ export default function Room({
                   )}
                 </div>
                 <ul className="list scroll">
-                  {state.queue.length === 0 && <div className="empty-hint">Nothing queued yet — the next song you add starts playing right away.</div>}
+                  {/* The playing track stays listed so the running order reads
+                      continuously instead of the song vanishing when it starts. */}
+                  {hasVideo && (
+                    <li className="row queue-item now-row">
+                      <span className="idx"><EqBars className={isPlaying ? 'eq now-eq playing' : 'eq now-eq'} /></span>
+                      <span className="grow">
+                        {isLib ? <span className="lib-mark"><WaveIcon size={12} /></span> : null}
+                        {npTitle}
+                        <small> · {isPlaying ? 'now playing' : 'paused'}</small>
+                      </span>
+                    </li>
+                  )}
+                  {state.queue.length === 0 && !hasVideo && <div className="empty-hint">Nothing queued yet — the next song you add starts playing right away.</div>}
                   {state.queue.map((q, i) => {
                     const voted = !!me?.seat && (q.voters ?? []).includes(me.seat);
                     return (
@@ -715,8 +732,15 @@ export default function Room({
                         onClick={() => playFromQueue(q.id)} title="Play this song now">
                         <span className="idx">{i + 1}</span>
                         <span className="grow">{q.kind === 'lib' ? <span className="lib-mark"><WaveIcon size={12} /></span> : null}{q.title} <small>· {q.addedBy}</small></span>
-                        {isHost && i > 0 && (
-                          <button className="iconbtn tofront" onClick={(e) => { e.stopPropagation(); socket.emit('queue:playNext', { itemId: q.id }); }} title="Play next">⤒</button>
+                        {isHost && (
+                          <span className="reorder">
+                            <button className="iconbtn" disabled={i === 0}
+                              onClick={(e) => { e.stopPropagation(); socket.emit('queue:move', { itemId: q.id, dir: -1 }); }}
+                              title="Move up">↑</button>
+                            <button className="iconbtn" disabled={i === state.queue.length - 1}
+                              onClick={(e) => { e.stopPropagation(); socket.emit('queue:move', { itemId: q.id, dir: 1 }); }}
+                              title="Move down">↓</button>
+                          </span>
                         )}
                         <button className={voted ? 'vote voted' : 'vote'} onClick={(e) => { e.stopPropagation(); vote(q.id); }} title={voted ? 'Remove your upvote' : 'Upvote'}>▲ {q.votes}</button>
                         <button className="iconbtn" onClick={(e) => { e.stopPropagation(); socket.emit('queue:remove', { itemId: q.id }); }} title="Remove from queue">✕</button>

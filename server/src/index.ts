@@ -106,9 +106,27 @@ export async function createServer(port = 3001, injectedDb?: DB, options?: { sen
   }
 
   const LOBBY = 'lobby';
+  /** Members whose socket is gone would keep a room looking occupied forever. */
+  function pruneGhosts(): string[] {
+    const changed = rooms.pruneGhostMembers((id) => io.sockets.sockets.has(id));
+    for (const code of changed) {
+      const room = rooms.getRoom(code);
+      if (!room) continue;
+      if (room.members.length === 0) scheduleDeletion(code);
+      else io.to(code).emit('room:state', room);
+    }
+    return changed;
+  }
   function broadcastLobby() {
+    pruneGhosts();
     io.to(LOBBY).emit('lobby:rooms', { rooms: rooms.listPublicRooms() });
   }
+  // Safety net: a missed disconnect shouldn't leave a ghost room listed until
+  // someone happens to trigger a lobby broadcast.
+  const ghostSweep = setInterval(() => {
+    if (pruneGhosts().length > 0) io.to(LOBBY).emit('lobby:rooms', { rooms: rooms.listPublicRooms() });
+  }, 15000);
+  ghostSweep.unref?.();
 
   // Emptied rooms are kept for a grace period so a refresh/reconnect — or a
   // friend opening a freshly shared invite link while the host is briefly
@@ -311,6 +329,20 @@ export async function createServer(port = 3001, injectedDb?: DB, options?: { sen
       hostAction((code) => io.to(code).emit('room:state', rooms.moveToFront(code, itemId)));
     });
 
+    // Reorder the queue (host keeps the running order sane).
+    socket.on('queue:move', ({ itemId, dir }) => {
+      if (typeof itemId !== 'string' || (dir !== -1 && dir !== 1)) return;
+      hostAction((code) => io.to(code).emit('room:state', rooms.moveQueueItem(code, itemId, dir)));
+    });
+
+    // Current state on demand — a client that mounts just after a broadcast
+    // (e.g. entering a room that was populated in the same tick) would
+    // otherwise miss it.
+    socket.on('room:sync', (cb) => {
+      if (typeof cb !== 'function') return;
+      cb(rooms.getRoomByMember(socket.id));
+    });
+
     // Play a queued track immediately (any member, like the other controls).
     socket.on('queue:playNow', ({ itemId }) => {
       if (typeof itemId !== 'string') return;
@@ -437,6 +469,7 @@ export async function createServer(port = 3001, injectedDb?: DB, options?: { sen
     httpServer,
     close: () =>
       new Promise<void>((resolve) => {
+        clearInterval(ghostSweep);
         for (const t of pendingDeletions.values()) clearTimeout(t);
         pendingDeletions.clear();
         io.close();
