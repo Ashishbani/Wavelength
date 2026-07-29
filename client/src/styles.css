@@ -523,11 +523,11 @@ button.link:hover { background: none; filter: brightness(1.2); }
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
   animation: fadein 0.15s ease;
 }
-.modal { width: 100%; max-width: 300px; padding: 18px; text-align: center; }
-.modal h3 { font-size: 16px; margin-bottom: 5px; }
-.modal .muted { margin: 0 0 14px; font-size: 13px; }
-.modal-actions { display: flex; gap: 8px; justify-content: center; }
-.modal-actions button { flex: 1; max-width: 130px; padding: 8px 12px; font-size: 13px; }
+.modal { width: 100%; max-width: 325px; padding: 22px 20px; text-align: center; }
+.modal h3 { font-size: 18px; margin-bottom: 7px; }
+.modal .muted { margin: 0 0 18px; font-size: 14px; }
+.modal-actions { display: flex; gap: 10px; justify-content: center; }
+.modal-actions button { flex: 1; max-width: 145px; padding: 11px 14px; font-size: 14px; }
 
 /* ============================================================
    Toasts
