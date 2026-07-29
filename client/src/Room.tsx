@@ -431,7 +431,9 @@ export default function Room({
     <div className="room">
       <header className="room-head">
         <span className="brand-mini">
-          <EqBars className={isPlaying ? 'logo-eq sm' : 'logo-eq sm idle'} />
+          {/* Always animating, like every other screen's logo — pausing it here
+              only looked like a glitch. */}
+          <EqBars className="logo-eq sm" />
           <span className="wordmark">Wavelength</span>
         </span>
         <div className="head-actions">
@@ -506,16 +508,6 @@ export default function Room({
               {cover ? <img className="artwork" src={cover} alt="" /> : <div className="artwork placeholder"><WaveIcon size={26} /></div>}
               <div className="np-meta grow">
                 <div className="np-title">{npTitle}</div>
-                {user && hasVideo && (
-                  <button
-                    className={favIds.has(state.playback.videoId!) ? 'fav-btn on' : 'fav-btn'}
-                    onClick={() => void toggleFavourite()}
-                    title={favIds.has(state.playback.videoId!) ? 'Remove from favourites' : 'Save to favourites'}
-                  >
-                    <HeartIcon filled={favIds.has(state.playback.videoId!)} size={15} />
-                    {favIds.has(state.playback.videoId!) ? 'Saved' : 'Save'}
-                  </button>
-                )}
                 <div className="np-status">
                   <EqBars className={isPlaying ? 'eq np-eq playing' : 'eq np-eq'} />
                   <span>
@@ -524,6 +516,18 @@ export default function Room({
                   </span>
                 </div>
               </div>
+              {/* Save sits at the end of the row (right-aligned), out of the
+                  title/status stack where it read as clutter. */}
+              {user && hasVideo && (
+                <button
+                  className={favIds.has(state.playback.videoId!) ? 'fav-btn on' : 'fav-btn'}
+                  onClick={() => void toggleFavourite()}
+                  title={favIds.has(state.playback.videoId!) ? 'Remove from favourites' : 'Save to favourites'}
+                >
+                  <HeartIcon filled={favIds.has(state.playback.videoId!)} size={15} />
+                  {favIds.has(state.playback.videoId!) ? 'Saved' : 'Save'}
+                </button>
+              )}
             </div>
 
             <div className="progress" style={{ marginTop: 14 }}>
