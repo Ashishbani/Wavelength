@@ -21,13 +21,20 @@ describe('historyRepo', () => {
     expect(list[0].title).toBe('Second');
   });
 
-  it('lists a replayed track once, at its latest play time', async () => {
+  it('returns every play so the client can group by day', async () => {
     await repo.add(uid, 'dQw4w9WgXcQ', 'Repeat');
     await repo.add(uid, 'oHg5SJYRHA0', 'Other');
     await repo.add(uid, 'dQw4w9WgXcQ', 'Repeat'); // played again
     await repo.add(uid, 'dQw4w9WgXcQ', 'Repeat'); // and again
     const list = await repo.listByUser(uid);
-    expect(list.map((h) => h.title)).toEqual(['Repeat', 'Other']); // no duplicates
+    expect(list).toHaveLength(4);                   // nothing collapsed server-side
+    expect(list[0].title).toBe('Repeat');           // newest first
+    expect(list.every((h) => typeof h.playedAt === 'number')).toBe(true);
+  });
+
+  it('caps how many plays it returns', async () => {
+    for (let i = 0; i < 5; i++) await repo.add(uid, 'dQw4w9WgXcQ', 'Song');
+    expect(await repo.listByUser(uid, 3)).toHaveLength(3);
   });
 
   it('scopes history to the user', async () => {

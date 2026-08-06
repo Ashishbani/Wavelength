@@ -276,6 +276,17 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .lib-tabs button { font-size: 12px; padding: 7px 4px; gap: 4px; }
 .lib-tabs button svg { flex-shrink: 0; }
 .lib-scroll { max-height: min(38vh, 320px); overflow-y: auto; }
+/* Day-grouped listening history */
+.range-chips { display: flex; gap: 6px; margin-bottom: 10px; }
+.range-chips .chip { cursor: pointer; border: 1px solid var(--border); background: rgba(0,0,0,0.2); }
+.range-chips .chip.on { background: var(--grad); color: #fff; border-color: transparent; }
+.play-day + .play-day { margin-top: 12px; }
+.day-head {
+  display: flex; align-items: center; margin: 0 0 6px; padding-left: 2px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint);
+}
+.play-time { color: var(--faint); font-size: 11px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.chip.plays { flex-shrink: 0; background: var(--surface-2); color: var(--muted); }
 .library .empty-hint { padding: 14px 4px; }
 
 /* account + friends panels */

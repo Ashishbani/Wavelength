@@ -4,12 +4,19 @@ import { apiGet, apiDelete } from './auth/api.js';
 import { HeartIcon } from './room/icons.js';
 import { listFavourites, removeFavourite, type Favourite } from './lib/favourites.js';
 import type { TrackKind } from '@wavelength/shared';
+import { groupPlaysByDay, timeLabel } from './lib/groupPlays.js';
 
 interface SavedRoom { code: string; name: string; }
 interface Playlist { id: string; name: string; items: { videoId: string; title: string }[]; }
 interface HistoryEntry { videoId: string; title: string; playedAt: number; }
 
 type LibTab = 'saved' | 'playlists' | 'history';
+type Range = 'all' | 'today' | 'week';
+const RANGES: { key: Range; label: string; days: number | null }[] = [
+  { key: 'all', label: 'All', days: null },
+  { key: 'today', label: 'Today', days: 1 },
+  { key: 'week', label: '7 days', days: 7 },
+];
 
 export default function AccountPanel({
   onJoin,
@@ -26,6 +33,7 @@ export default function AccountPanel({
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [favourites, setFavourites] = useState<Favourite[]>([]);
+  const [range, setRange] = useState<Range>('all');
 
   useEffect(() => {
     if (!user) return;
@@ -107,17 +115,44 @@ export default function AccountPanel({
           </>
         )}
 
-        {tab === 'history' && (
-          <>
-            <ul className="list lib-scroll">{history.slice(0, 30).map((h, i) => (
-              <li key={i} className="row">
-                <span className="grow">{h.title}</span>
-                <button className="chip join" onClick={() => onPlayTrack({ videoId: h.videoId, title: h.title })} title="Play again">Play</button>
-              </li>
-            ))}</ul>
-            {history.length === 0 && <p className="empty-hint">Songs you play show up here.</p>}
-          </>
-        )}
+        {tab === 'history' && (() => {
+          // Grouped by the day you listened, with repeats inside a day collapsed
+          // to one row and a ×N count — a flat list repeated the same title.
+          const cutoff = (() => {
+            const days = RANGES.find((r) => r.key === range)?.days;
+            if (!days) return 0;
+            const d = new Date(); d.setHours(0, 0, 0, 0);
+            return d.getTime() - (days - 1) * 86_400_000;
+          })();
+          const days = groupPlaysByDay(history.filter((h) => h.playedAt >= cutoff));
+          return (
+            <>
+              <div className="range-chips">
+                {RANGES.map((r) => (
+                  <button key={r.key} className={range === r.key ? 'chip on' : 'chip'} onClick={() => setRange(r.key)}>{r.label}</button>
+                ))}
+              </div>
+              <div className="lib-scroll">
+                {days.map((d) => (
+                  <div key={d.key} className="play-day">
+                    <h4 className="day-head">{d.label}<span className="count"> · {d.items.length}</span></h4>
+                    <ul className="list">{d.items.map((h) => (
+                      <li key={h.videoId} className="row">
+                        <span className="grow">{h.title}</span>
+                        {h.plays > 1 && <span className="chip plays" title={`Played ${h.plays} times`}>×{h.plays}</span>}
+                        <small className="play-time">{timeLabel(h.playedAt)}</small>
+                        <button className="chip join" onClick={() => onPlayTrack({ videoId: h.videoId, title: h.title })} title="Play again">Play</button>
+                      </li>
+                    ))}</ul>
+                  </div>
+                ))}
+              </div>
+              {days.length === 0 && (
+                <p className="empty-hint">{history.length === 0 ? 'Songs you play show up here.' : 'Nothing played in this range.'}</p>
+              )}
+            </>
+          );
+        })()}
       </div>
     </div>
   );
