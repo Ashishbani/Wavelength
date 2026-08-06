@@ -65,3 +65,34 @@ export function groupPlaysByDay(plays: Play[], now = Date.now()): PlayDay[] {
 export function timeLabel(ts: number): string {
   return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
+
+export interface TopTrack {
+  videoId: string;
+  title: string;
+  /** Times played in the window. */
+  plays: number;
+  /** Most recent play, used to break ties. */
+  lastPlayedAt: number;
+}
+
+/**
+ * Most-played tracks in a window, busiest first. Ties break toward whatever you
+ * played most recently, so a fresh favourite outranks an older one on equal
+ * counts.
+ */
+export function topTracks(plays: Play[], sinceTs = 0, limit = 10): TopTrack[] {
+  const byTrack = new Map<string, TopTrack>();
+  for (const p of plays) {
+    if (p.playedAt < sinceTs) continue;
+    const found = byTrack.get(p.videoId);
+    if (found) {
+      found.plays += 1;
+      found.lastPlayedAt = Math.max(found.lastPlayedAt, p.playedAt);
+    } else {
+      byTrack.set(p.videoId, { videoId: p.videoId, title: p.title, plays: 1, lastPlayedAt: p.playedAt });
+    }
+  }
+  return [...byTrack.values()]
+    .sort((a, b) => b.plays - a.plays || b.lastPlayedAt - a.lastPlayedAt)
+    .slice(0, limit);
+}

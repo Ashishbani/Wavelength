@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupPlaysByDay, dayLabel } from './groupPlays.js';
+import { groupPlaysByDay, dayLabel, topTracks } from './groupPlays.js';
 
 /** A local-time timestamp, so the tests exercise real local-day boundaries. */
 function at(y: number, m: number, d: number, h = 12, min = 0): number {
@@ -46,4 +46,42 @@ describe('groupPlaysByDay', () => {
   it('handles an empty list', () => {
     expect(groupPlaysByDay([], now)).toEqual([]);
   });
+});
+
+describe('topTracks', () => {
+  const now = at(2026, 7, 29, 18);
+  const plays = [
+    { videoId: 'a', title: 'A', playedAt: at(2026, 7, 29, 9) },
+    { videoId: 'a', title: 'A', playedAt: at(2026, 7, 28, 9) },
+    { videoId: 'b', title: 'B', playedAt: at(2026, 7, 29, 10) },
+    { videoId: 'b', title: 'B', playedAt: at(2026, 7, 29, 11) },
+    { videoId: 'b', title: 'B', playedAt: at(2026, 7, 20, 11) },
+    { videoId: 'c', title: 'C', playedAt: at(2026, 7, 10, 11) },
+  ];
+
+  it('ranks by play count, busiest first', () => {
+    expect(topTracks(plays).map((t) => [t.title, t.plays])).toEqual([['B', 3], ['A', 2], ['C', 1]]);
+  });
+
+  it('honours the window', () => {
+    const weekAgo = at(2026, 7, 23, 0);
+    expect(topTracks(plays, weekAgo).map((t) => [t.title, t.plays])).toEqual([['B', 2], ['A', 2]]);
+  });
+
+  it('breaks ties toward the more recently played track', () => {
+    const tie = [
+      { videoId: 'old', title: 'Old', playedAt: at(2026, 7, 20, 9) },
+      { videoId: 'new', title: 'New', playedAt: at(2026, 7, 29, 9) },
+    ];
+    expect(topTracks(tie).map((t) => t.title)).toEqual(['New', 'Old']);
+  });
+
+  it('limits the list', () => {
+    expect(topTracks(plays, 0, 2)).toHaveLength(2);
+  });
+
+  it('handles no plays', () => {
+    expect(topTracks([], 0)).toEqual([]);
+  });
+  void now;
 });

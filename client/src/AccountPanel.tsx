@@ -4,13 +4,13 @@ import { apiGet, apiDelete } from './auth/api.js';
 import { HeartIcon } from './room/icons.js';
 import { listFavourites, removeFavourite, type Favourite } from './lib/favourites.js';
 import type { TrackKind } from '@wavelength/shared';
-import { groupPlaysByDay, timeLabel } from './lib/groupPlays.js';
+import { groupPlaysByDay, timeLabel, topTracks } from './lib/groupPlays.js';
 
 interface SavedRoom { code: string; name: string; }
 interface Playlist { id: string; name: string; items: { videoId: string; title: string }[]; }
 interface HistoryEntry { videoId: string; title: string; playedAt: number; }
 
-type LibTab = 'saved' | 'playlists' | 'history';
+type LibTab = 'saved' | 'playlists' | 'top' | 'history';
 type Range = 'all' | 'today' | 'week';
 const RANGES: { key: Range; label: string; days: number | null }[] = [
   { key: 'all', label: 'All', days: null },
@@ -34,6 +34,21 @@ export default function AccountPanel({
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [favourites, setFavourites] = useState<Favourite[]>([]);
   const [range, setRange] = useState<Range>('all');
+
+  /** Start of the selected range, in local time (0 = all time). */
+  function rangeCutoff(): number {
+    const days = RANGES.find((r) => r.key === range)?.days;
+    if (!days) return 0;
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    return d.getTime() - (days - 1) * 86_400_000;
+  }
+  const rangeChips = (
+    <div className="range-chips">
+      {RANGES.map((r) => (
+        <button key={r.key} className={range === r.key ? 'chip on' : 'chip'} onClick={() => setRange(r.key)}>{r.label}</button>
+      ))}
+    </div>
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -82,6 +97,7 @@ export default function AccountPanel({
             <HeartIcon filled={tab === 'saved'} size={13} /> Saved
           </button>
           <button className={tab === 'playlists' ? 'active' : ''} onClick={() => setTab('playlists')}>Playlists</button>
+          <button className={tab === 'top' ? 'active' : ''} onClick={() => setTab('top')}>Top</button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>History</button>
         </div>
 
@@ -115,23 +131,37 @@ export default function AccountPanel({
           </>
         )}
 
+        {tab === 'top' && (() => {
+          const top = topTracks(history, rangeCutoff(), 10);
+          const most = top[0]?.plays ?? 0;
+          return (
+            <>
+              {rangeChips}
+              <ul className="list lib-scroll top-list">{top.map((t, i) => (
+                <li key={t.videoId} className="row top-row">
+                  <span className={i < 3 ? 'rank medal' : 'rank'}>{i + 1}</span>
+                  <span className="grow">
+                    {t.title}
+                    <span className="top-bar"><span style={{ width: `${most ? (t.plays / most) * 100 : 0}%` }} /></span>
+                  </span>
+                  <span className="chip plays">{t.plays} play{t.plays === 1 ? '' : 's'}</span>
+                  <button className="chip join" onClick={() => onPlayTrack({ videoId: t.videoId, title: t.title })} title="Play again">Play</button>
+                </li>
+              ))}</ul>
+              {top.length === 0 && (
+                <p className="empty-hint">{history.length === 0 ? 'Play some music and your most-played tracks land here.' : 'Nothing played in this range.'}</p>
+              )}
+            </>
+          );
+        })()}
+
         {tab === 'history' && (() => {
           // Grouped by the day you listened, with repeats inside a day collapsed
           // to one row and a ×N count — a flat list repeated the same title.
-          const cutoff = (() => {
-            const days = RANGES.find((r) => r.key === range)?.days;
-            if (!days) return 0;
-            const d = new Date(); d.setHours(0, 0, 0, 0);
-            return d.getTime() - (days - 1) * 86_400_000;
-          })();
-          const days = groupPlaysByDay(history.filter((h) => h.playedAt >= cutoff));
+          const days = groupPlaysByDay(history.filter((h) => h.playedAt >= rangeCutoff()));
           return (
             <>
-              <div className="range-chips">
-                {RANGES.map((r) => (
-                  <button key={r.key} className={range === r.key ? 'chip on' : 'chip'} onClick={() => setRange(r.key)}>{r.label}</button>
-                ))}
-              </div>
+              {rangeChips}
               <div className="lib-scroll">
                 {days.map((d) => (
                   <div key={d.key} className="play-day">
