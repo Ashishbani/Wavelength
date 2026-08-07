@@ -118,7 +118,8 @@ export default function App() {
 
   let screen;
   if (view === 'room' && room) {
-    screen = <Room initialState={room} selfId={selfId} onLeave={leaveRoom} />;
+    // The header's Leave button confirms too — same dialog the Back button uses.
+    screen = <Room initialState={room} selfId={selfId} onLeave={() => setAskLeave(true)} />;
   } else if (view === 'loading') {
     screen = <div className="splash">Loading Wavelength…</div>;
   } else if (view === 'deepJoin' && deepCode) {
@@ -130,7 +131,7 @@ export default function App() {
       />
     );
   } else if (view === 'lobby') {
-    screen = <Lobby onJoined={enterRoom} onBackToAuth={() => setEnteredAsGuest(false)} />;
+    screen = <Lobby onJoined={enterRoom} onBackToAuth={() => setEnteredAsGuest(false)} onRequestLogout={() => setAskLogout(true)} />;
   } else {
     screen = <Auth onGuest={() => setEnteredAsGuest(true)} />;
   }

@@ -11,11 +11,13 @@ import { clientSessionId } from './lib/session.js';
 export default function Lobby({
   onJoined,
   onBackToAuth,
+  onRequestLogout,
 }: {
   onJoined: (s: RoomState, selfId: string) => void;
   onBackToAuth: () => void;
+  onRequestLogout: () => void;
 }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [name, setName] = useState(user?.displayName ?? '');
   const [code, setCode] = useState('');
   const [isPublic, setIsPublic] = useState(true);
@@ -88,7 +90,7 @@ export default function Lobby({
               : <span className="who-text">Listening as a <b>guest</b></span>}
           </span>
           {user
-            ? <button className="ghost sm-btn" onClick={() => logout()}>Log out</button>
+            ? <button className="ghost sm-btn" onClick={onRequestLogout}>Log out</button>
             : <button className="ghost sm-btn" onClick={onBackToAuth}>Log in / Sign up</button>}
         </span>
       </div>
