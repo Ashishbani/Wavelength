@@ -84,7 +84,7 @@ export default function Lobby({
           <span className="wordmark">Wavelength</span>
         </span>
         <span className="lobby-id">
-          <span className="who">
+          <span className={user ? 'who' : 'who guest'}>
             <span className="avatar sm" style={{ background: user ? '#8b5cff' : '#4a4a68' }}>{initials}</span>
             {user
               ? <span className="who-text">Signed in as <b>{user.displayName}</b>{user.username ? <small> · @{user.username}</small> : null}</span>
@@ -93,7 +93,13 @@ export default function Lobby({
           <ThemeToggle />
           {user
             ? <button className="ghost sm-btn" onClick={onRequestLogout}>Log out</button>
-            : <button className="ghost sm-btn" onClick={onBackToAuth}>Log in / Sign up</button>}
+            : (
+              <button className="ghost sm-btn" onClick={onBackToAuth}>
+                {/* the full label doesn't fit beside the brand + toggle on a phone */}
+                <span className="lbl-long">Log in / Sign up</span>
+                <span className="lbl-short">Log in</span>
+              </button>
+            )}
         </span>
       </div>
 

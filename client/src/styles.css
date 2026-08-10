@@ -258,8 +258,14 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .lobby-id { display: flex; align-items: center; gap: 10px; margin-left: auto; min-width: 0; }
 .lobby-bar .who { display: flex; align-items: center; gap: 10px; font-size: 14px; min-width: 0; }
 .lobby-bar .who-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbl-short { display: none; }
 @media (max-width: 460px) {
   .lobby-bar .who-text { display: none; } /* avatar alone identifies; brand stays readable */
+  /* Keep the bar on one row: shorten the label, and drop the guest avatar —
+     it carries no identity (a signed-in user's avatar does, so it stays). */
+  .lbl-long { display: none; }
+  .lbl-short { display: inline; }
+  .lobby-bar .who.guest { display: none; }
 }
 .guest-btn {
   width: 100%; padding: 13px; font-size: 15px;
