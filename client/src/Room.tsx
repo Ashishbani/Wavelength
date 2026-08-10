@@ -15,6 +15,7 @@ import { fetchYouTubeTitle } from './lib/youtubeTitle.js';
 import { clientSessionId } from './lib/session.js';
 import { listFavourites, addFavourite, removeFavourite } from './lib/favourites.js';
 import Modal from './ui/Modal.js';
+import ThemeToggle from './ui/ThemeToggle.js';
 
 const AV_COLORS = ['#8b5cff', '#ff5ca8', '#3ddc97', '#ffb14e', '#4ea8ff', '#c65cff'];
 function avatarColor(s: string): string {
@@ -525,6 +526,7 @@ export default function Room({
         </div>
         <div className="head-right">
           <span className="room-badge"><span className="rb-label">Room </span><b>{state.code}</b></span>
+          <ThemeToggle />
           <button className="ghost sm-btn leave-btn" onClick={onLeave} title="Leave the room"><LeaveIcon /> Leave</button>
         </div>
       </header>

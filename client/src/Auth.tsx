@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from './auth/AuthContext.js';
 import { EqBars } from './room/icons.js';
 import { ApiError, apiPost } from './auth/api.js';
+import ThemeToggle from './ui/ThemeToggle.js';
 
 type Mode = 'login' | 'register' | 'forgot';
 
@@ -82,6 +83,7 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
 
   return (
     <div className="auth-screen">
+      <div className="auth-theme"><ThemeToggle /></div>
       <div className="auth-split">
         <div className="auth-hero">
           <div className="logo-row">

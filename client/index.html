@@ -4,7 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Wavelength — listen together</title>
-    <meta name="theme-color" content="#8b5cff" />
+    <meta name="theme-color" content="#080813" />
+    <script>
+      // Paint the saved (or system) palette before first render — no flash.
+      (function () {
+        try {
+          var p = localStorage.getItem('wl_theme') || 'system';
+          var t = p === 'system'
+            ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+            : p;
+          document.documentElement.setAttribute('data-theme', t);
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', t === 'light' ? '#fbfaff' : '#080813');
+        } catch (e) { /* private mode */ }
+      })();
+    </script>
     <meta name="description" content="Listen to the same music together, in perfect sync." />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon.svg" />

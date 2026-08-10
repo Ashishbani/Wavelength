@@ -7,6 +7,7 @@ import AccountPanel from './AccountPanel.js';
 import Toasts from './friends/Toasts.js';
 import { useLobbyRooms } from './lib/useLobbyRooms.js';
 import { clientSessionId } from './lib/session.js';
+import ThemeToggle from './ui/ThemeToggle.js';
 
 export default function Lobby({
   onJoined,
@@ -89,6 +90,7 @@ export default function Lobby({
               ? <span className="who-text">Signed in as <b>{user.displayName}</b>{user.username ? <small> · @{user.username}</small> : null}</span>
               : <span className="who-text">Listening as a <b>guest</b></span>}
           </span>
+          <ThemeToggle />
           {user
             ? <button className="ghost sm-btn" onClick={onRequestLogout}>Log out</button>
             : <button className="ghost sm-btn" onClick={onBackToAuth}>Log in / Sign up</button>}
