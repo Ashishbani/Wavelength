@@ -153,8 +153,8 @@ export default function Lobby({
             <div className="card panel">
               <h3>Get more with an account</h3>
               <ul className="perks">
-                <li>💾 Save rooms & playlists</li>
-                <li>🕑 Listening history</li>
+                <li>❤️ Save favourites & playlists</li>
+                <li>🕑 Listening history & top tracks</li>
                 <li>🎵 Upload your own music</li>
               </ul>
               <button className="primary" style={{ width: '100%' }} onClick={onBackToAuth}>Create an account</button>

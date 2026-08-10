@@ -98,6 +98,43 @@
 [data-theme='light'] .chip.join { color: #fff; }
 [data-theme='light'] .np-card { background: #fff; }
 
+/* Give controls physical presence. On dark, translucent fills read as raised;
+   on white the same fills go flat, so light mode gets real surfaces, hairlines
+   and a lift on hover. */
+[data-theme='light'] button,
+[data-theme='light'] button.ghost {
+  background: #fff;
+  border-color: rgba(24, 20, 60, 0.14);
+  box-shadow: 0 1px 2px rgba(30, 24, 70, 0.07);
+}
+[data-theme='light'] button:hover,
+[data-theme='light'] button.ghost:hover {
+  background: #fff;
+  border-color: rgba(139, 92, 255, 0.45);
+  box-shadow: 0 3px 10px rgba(139, 92, 255, 0.18);
+  transform: translateY(-1px);
+}
+[data-theme='light'] button:active { transform: translateY(0) scale(0.99); box-shadow: 0 1px 2px rgba(30, 24, 70, 0.10); }
+[data-theme='light'] button.primary { box-shadow: 0 4px 14px rgba(139, 92, 255, 0.32); }
+[data-theme='light'] button.primary:hover { box-shadow: 0 6px 20px rgba(139, 92, 255, 0.42); }
+[data-theme='light'] button:disabled, [data-theme='light'] button:disabled:hover {
+  transform: none; box-shadow: none; border-color: var(--border);
+}
+/* Icon buttons stay quiet until touched, then take the accent. */
+[data-theme='light'] .iconbtn { background: transparent; border-color: transparent; box-shadow: none; }
+[data-theme='light'] .iconbtn:hover { background: rgba(139, 92, 255, 0.10); border-color: transparent; box-shadow: none; transform: none; color: var(--accent); }
+[data-theme='light'] .theme-toggle,
+[data-theme='light'] .round-btn { background: #fff; box-shadow: 0 2px 6px rgba(30, 24, 70, 0.12); }
+[data-theme='light'] .round-btn:hover { color: var(--accent); }
+/* Chips read as small pills, not flat grey blocks. */
+[data-theme='light'] .chip { background: #fff; border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(30, 24, 70, 0.06); }
+[data-theme='light'] .chip.join, [data-theme='light'] .chip.on, [data-theme='light'] .vote.voted { border-color: transparent; }
+[data-theme='light'] .range-chips .chip.on { color: #fff; }
+[data-theme='light'] .tabs button:not(.active):hover { background: rgba(24, 20, 60, 0.05); }
+/* A whisper of brand colour along the top of each card. */
+[data-theme='light'] .card { background: linear-gradient(180deg, rgba(139, 92, 255, 0.035), rgba(255, 255, 255, 0) 120px), #fff; }
+[data-theme='light'] .lbl-short, [data-theme='light'] .lbl-long { display: inherit; }
+
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }

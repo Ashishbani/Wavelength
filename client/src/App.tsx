@@ -7,6 +7,7 @@ import Lobby from './Lobby.js';
 import Room from './Room.js';
 import DeepJoin from './DeepJoin.js';
 import { exitApp, isNativeApp, onNativeBack } from './lib/native.js';
+import { scrollToTop } from './lib/scroll.js';
 
 function codeFromPath(): string | null {
   const m = window.location.pathname.match(/^\/r\/([A-Za-z0-9]{1,12})$/);
@@ -23,6 +24,9 @@ export default function App() {
   const [askExit, setAskExit] = useState(false);
   const [askLeave, setAskLeave] = useState(false);
   const [askLogout, setAskLogout] = useState(false);
+  // Set when the sign-in screen is opened deliberately (the lobby's Log in
+  // button), so it opens at the form instead of the marketing hero.
+  const [focusAuthForm, setFocusAuthForm] = useState(false);
 
   // Which screen is showing — drives both rendering and Back behaviour.
   const view: 'room' | 'loading' | 'deepJoin' | 'lobby' | 'auth' =
@@ -32,7 +36,7 @@ export default function App() {
   // scroll position carries over and the new one opens part-way down.
   useEffect(() => {
     if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
-    window.scrollTo(0, 0);
+    scrollToTop();
   }, [view]);
 
   // Back navigation: keep a sentinel history entry so the hardware/browser Back
@@ -131,9 +135,15 @@ export default function App() {
       />
     );
   } else if (view === 'lobby') {
-    screen = <Lobby onJoined={enterRoom} onBackToAuth={() => setEnteredAsGuest(false)} onRequestLogout={() => setAskLogout(true)} />;
+    screen = (
+      <Lobby
+        onJoined={enterRoom}
+        onBackToAuth={() => { setFocusAuthForm(true); setEnteredAsGuest(false); }}
+        onRequestLogout={() => setAskLogout(true)}
+      />
+    );
   } else {
-    screen = <Auth onGuest={() => setEnteredAsGuest(true)} />;
+    screen = <Auth onGuest={() => setEnteredAsGuest(true)} focusForm={focusAuthForm} />;
   }
 
   return (

@@ -1,12 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth/AuthContext.js';
 import { EqBars } from './room/icons.js';
 import { ApiError, apiPost } from './auth/api.js';
 import ThemeToggle from './ui/ThemeToggle.js';
+import { scrollToTop } from './lib/scroll.js';
 
 type Mode = 'login' | 'register' | 'forgot';
 
-export default function Auth({ onGuest }: { onGuest: () => void }) {
+export default function Auth({ onGuest, focusForm = false }: { onGuest: () => void; focusForm?: boolean }) {
+  const formRef = useRef<HTMLDivElement | null>(null);
+
+  // Coming from "Log in / Sign up", the form is what you asked for — on a phone
+  // it sits below the hero, so bring it into view (after the view-change
+  // scroll-to-top has run).
+  useEffect(() => {
+    if (!focusForm) return;
+    const t = window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+    return () => window.clearTimeout(t);
+  }, [focusForm]);
+
   const { login, register } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -22,7 +34,7 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   // not carry over between them.
   function switchMode(next: Mode) {
     setMode(next);
-    window.scrollTo(0, 0);
+    scrollToTop();
     setEmail(''); setPassword(''); setDisplayName(''); setCode('');
     setCodeSent(false); setError(''); setNotice('');
   }
@@ -32,13 +44,13 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
   // signed in with — the reset flow never asks for it again.
   function goForgot() {
     setMode('forgot');
-    window.scrollTo(0, 0);
+    scrollToTop();
     setPassword(''); setCode('');
     setCodeSent(false); setError(''); setNotice('');
   }
   function backToLogin() {
     setMode('login');
-    window.scrollTo(0, 0);
+    scrollToTop();
     setPassword(''); setCode('');
     setCodeSent(false); setError(''); setNotice('');
   }
@@ -94,14 +106,14 @@ export default function Auth({ onGuest }: { onGuest: () => void }) {
           <ul className="hero-features">
             <li><span className="ico">🎧</span><div><b>Synced playback</b><small>Everyone hears the same beat, in perfect sync.</small></div></li>
             <li><span className="ico">📃</span><div><b>Shared queue & voting</b><small>Anyone can add tracks — the room votes what plays next.</small></div></li>
-            <li><span className="ico">💬</span><div><b>Live chat & reactions</b><small>Talk and drop 🔥❤️🎉 as the music plays.</small></div></li>
+            <li><span className="ico">💬</span><div><b>Live chat</b><small>Talk as the music plays, without leaving the room.</small></div></li>
             <li><span className="ico">🎵</span><div><b>Your own music</b><small>Upload tracks — they keep playing with the screen off.</small></div></li>
           </ul>
           <button className="guest-btn" onClick={onGuest}>Continue as guest →</button>
           <p className="muted" style={{ marginTop: 10 }}>No account needed to create or join a room.</p>
         </div>
 
-        <div className="auth-form-wrap">
+        <div className="auth-form-wrap" ref={formRef}>
           <div className="card panel auth-form">
             {mode !== 'forgot' && (
               <div className="auth-tabs">
