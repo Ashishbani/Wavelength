@@ -42,6 +42,13 @@ export default function App() {
   // Back navigation: keep a sentinel history entry so the hardware/browser Back
   // always fires popstate (instead of closing the app's WebView), then move one
   // screen back ourselves. At the first screen we ask before exiting.
+  // The URL the current screen should show. Re-arming pushes a fresh entry, and
+  // without this it would inherit whatever URL the popped entry had — a Back
+  // press inside a room used to rewrite the address bar from /r/CODE to /, so a
+  // refresh afterwards dropped the user out of the room.
+  const pathRef = useRef('/');
+  pathRef.current = room ? `/r/${room.code}` : deepCode ? `/r/${deepCode}` : '/';
+
   const backRef = useRef<() => boolean>(() => false);
   backRef.current = () => {
     // An open dialog absorbs Back (dismiss it) instead of stacking prompts.
@@ -49,20 +56,34 @@ export default function App() {
     // Leaving a room is disruptive for everyone in it, so confirm first.
     if (room) { setAskLeave(true); return true; }
     if (deepCode) { setDeepCode(null); return true; }    // invite screen → lobby/auth
-    // Signed in at the lobby: going "back" means ending the session, so ask.
-    if (user) { setAskLogout(true); return true; }
+    // Signed in at the lobby, there's no earlier app screen to reach. In the app
+    // that means Back would close Wavelength, so it confirms ending the session.
+    // On the web it means the browser's Back — which should do what it says and
+    // return to the page the user came from. The session cookie survives, so
+    // they come back signed in; nothing is lost by leaving.
+    if (user) { if (!isNativeApp()) return false; setAskLogout(true); return true; }
     if (enteredAsGuest) { setEnteredAsGuest(false); return true; } // guest lobby → sign in
     return false;                                        // at the sign-in screen
   };
 
   useEffect(() => {
     const armed = () => (window.history.state as { wlBack?: boolean } | null)?.wlBack === true;
-    const arm = () => window.history.pushState({ wlBack: true }, '');
+    const arm = () => window.history.pushState({ wlBack: true }, '', pathRef.current);
     if (!armed()) arm();
     function onPop() {
-      const handled = backRef.current();
-      if (!handled) setAskExit(true);
-      arm(); // re-arm so the next Back press is ours too
+      if (backRef.current()) {
+        arm(); // re-arm so the next Back press is ours too
+        return;
+      }
+      // Nothing left to go back through. Closing is a real action in the app, so
+      // it asks first. A browser tab can't be closed by script anyway, and Back
+      // there means "the page I came from" — so step out of the site instead of
+      // trapping the user behind a prompt that can't do anything.
+      if (isNativeApp()) { setAskExit(true); arm(); return; }
+      window.history.back();
+      // Opened straight into a fresh tab, there may be nowhere to go; if we're
+      // still here, re-arm so in-app Back (leaving a room) keeps working.
+      window.setTimeout(() => { if (!armed()) arm(); }, 150);
     }
     // Coming back from the background (or a restored WebView) can leave us
     // without the sentinel — without this, the next Back closes the app and the
