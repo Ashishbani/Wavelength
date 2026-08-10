@@ -16,6 +16,7 @@
   --muted: #9b9ac6;
   --faint: #6f6f9c;
   --accent: #8b5cff;
+  --accent-ink: #8b5cff;   /* accent used as TEXT; day mode darkens it to stay legible */
   --accent-2: #ff5ca8;
   --grad: linear-gradient(120deg, #8b5cff 0%, #ff5ca8 100%);
   --online: #3ddc97;
@@ -59,7 +60,8 @@
   --border-strong: rgba(24, 20, 60, 0.26);
   --text: #171432;
   --muted: #56517a;
-  --faint: #837ea1;
+  --faint: #767199;    /* 4.6:1 on white — the old #837ea1 was 3.8:1 and read as disabled */
+  --accent-ink: #7c3aed; /* the brand violet is only 4.1:1 on white, too pale to read */
   --online: #0e9c62;
   --danger: #d32148;
   --shadow: 0 4px 16px rgba(30, 24, 70, 0.09);
@@ -115,6 +117,19 @@
   transform: translateY(-1px);
 }
 [data-theme='light'] button:active { transform: translateY(0) scale(0.99); box-shadow: 0 1px 2px rgba(30, 24, 70, 0.10); }
+/* The white surface above is for NEUTRAL controls only. These selectors outrank
+   `button.primary` (and far outrank `.play-btn`), so the brand-gradient controls
+   have to be handed their colour back — otherwise they render white, and their
+   white labels disappear entirely. */
+[data-theme='light'] button.primary,
+[data-theme='light'] button.primary:hover,
+[data-theme='light'] .play-btn,
+[data-theme='light'] .play-btn:hover,
+[data-theme='light'] .play-btn:active {
+  background: var(--grad);
+  color: #fff;
+  border-color: transparent;
+}
 [data-theme='light'] button.primary { box-shadow: 0 4px 14px rgba(139, 92, 255, 0.32); }
 [data-theme='light'] button.primary:hover { box-shadow: 0 6px 20px rgba(139, 92, 255, 0.42); }
 [data-theme='light'] button:disabled, [data-theme='light'] button:disabled:hover {
@@ -133,7 +148,25 @@
 [data-theme='light'] .tabs button:not(.active):hover { background: rgba(24, 20, 60, 0.05); }
 /* A whisper of brand colour along the top of each card. */
 [data-theme='light'] .card { background: linear-gradient(180deg, rgba(139, 92, 255, 0.035), rgba(255, 255, 255, 0) 120px), #fff; }
-[data-theme='light'] .lbl-short, [data-theme='light'] .lbl-long { display: inherit; }
+/* The stage is the biggest shape on the page. A translucent dark fill reads as
+   a raised panel on the dark theme but as a grey hole punched in a white one,
+   so on light it becomes a card with a dashed brand edge instead. */
+[data-theme='light'] .stage-empty {
+  background: linear-gradient(180deg, rgba(139, 92, 255, 0.05), rgba(255, 255, 255, 0) 70%), #fff;
+  border-color: rgba(139, 92, 255, 0.34);
+  box-shadow: var(--shadow);
+}
+/* This one sits on the tinted member chip rather than the white card, so the
+   faint ink that clears 4.6:1 elsewhere drops to 4.2:1 here. */
+[data-theme='light'] .me-chip .me-role { color: var(--muted); }
+/* Album art blurred behind the now-playing card is usually dark, so on white it
+   greys the card out instead of tinting it — the one card that looked dirty next
+   to its neighbours. Brightening the wash keeps the hue and drops the grey. */
+[data-theme='light'] .cover-bg { filter: blur(44px) saturate(2.4) brightness(1.55); }
+/* Avatar colours come from inline styles, so they can't be re-picked per theme.
+   An inset wash darkens whatever colour arrives (it paints over the background
+   but under the initials, so the white text keeps its full contrast). */
+[data-theme='light'] .avatar { box-shadow: inset 0 0 0 100px rgba(24, 20, 60, 0.14); }
 
 * { box-sizing: border-box; }
 
@@ -331,7 +364,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .auth-form input, .auth-form > button.primary { width: 100%; }
 .auth-form .auth-tabs { margin-bottom: 4px; }
 button.link {
-  background: none; border: none; padding: 0; color: var(--accent);
+  background: none; border: none; padding: 0; color: var(--accent-ink);
   font-weight: 600; text-decoration: underline; display: inline;
 }
 button.link:hover { background: none; filter: brightness(1.2); }
@@ -601,7 +634,10 @@ button.link:hover { background: none; filter: brightness(1.2); }
   box-shadow: 0 10px 28px rgba(139, 92, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   animation: glow 3s ease-in-out infinite;
 }
-.play-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+/* Restates the gradient because the generic `button:hover` fill outranks the
+   single class above — without it the main transport control turns into a plain
+   grey circle the moment the pointer touches it. */
+.play-btn:hover { background: var(--grad); filter: brightness(1.1); transform: scale(1.05); }
 .transport .round-btn, .play-btn { flex-shrink: 0; padding: 0; }
 .transport svg, .play-btn svg { display: block; }
 @keyframes glow {
@@ -669,7 +705,7 @@ button.link:hover { background: none; filter: brightness(1.2); }
 .empty-hint { color: var(--faint); font-size: 13px; text-align: center; padding: 20px 0; }
 
 /* queue */
-.lib-mark { display: inline-flex; vertical-align: -1px; margin-right: 6px; color: var(--accent); }
+.lib-mark { display: inline-flex; vertical-align: -1px; margin-right: 6px; color: var(--accent-ink); }
 .fav-mark { display: inline-flex; flex-shrink: 0; color: var(--accent-2); }
 /* keep the Play chip compact when it carries an icon */
 .chip.join { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
