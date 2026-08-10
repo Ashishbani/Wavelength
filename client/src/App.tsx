@@ -28,7 +28,10 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [askExit, setAskExit] = useState(false);
   const [askLeave, setAskLeave] = useState(false);
-  const [askLogout, setAskLogout] = useState(false);
+  // 'stay' ends the session and shows the sign-in screen (the Log out button,
+  // and Back in the app). 'leave' also returns to the page the user came from,
+  // which is what Back means in a browser.
+  const [askLogout, setAskLogout] = useState<false | 'stay' | 'leave'>(false);
   // Set when the sign-in screen is opened deliberately (the lobby's Log in
   // button), so it opens at the form instead of the marketing hero.
   const [focusAuthForm, setFocusAuthForm] = useState(false);
@@ -44,16 +47,22 @@ export default function App() {
     scrollToTop();
   }, [view]);
 
+  // Is there a page behind us to return to? Read once, before we push anything
+  // of our own. A tab opened straight onto Wavelength (bookmark, typed URL, new
+  // tab) has nothing behind it, and its Back button is rightly greyed out —
+  // arming there would resurrect a dead button that then swallowed the press.
+  // history.length counts the current entry, so >1 means something sits behind
+  // us. (The Navigation API's canGoBack looks like the better answer but isn't:
+  // it only sees same-origin entries, so arriving from a search engine — the
+  // whole case this exists for — reports false.)
+  const [canLeaveSite] = useState(() => window.history.length > 1);
+
   // Back navigation. A sentinel history entry is what turns a Back press into a
-  // popstate we can act on — but holding one when there's nothing to intercept
-  // is what broke the web: it made the browser's Back button look usable, then
-  // swallowed the press, so a tab opened straight onto the app went nowhere.
-  // So on the web the sentinel exists only while an app screen sits "behind"
-  // the current one; at the outermost screen the browser's own Back is left in
-  // charge, and it correctly does nothing when there's no page to return to.
-  // The native shell always keeps one — a Back press there must never fall
-  // through to the WebView's own history.
-  const needsSentinel = isNativeApp() || Boolean(room || deepCode || enteredAsGuest);
+  // popstate we can act on, so we keep one whenever Back has something to do:
+  // an app screen sits behind the current one, or there's a page to return to
+  // and we want to confirm before going. The native shell always keeps one — a
+  // Back press there must never fall through to the WebView's own history.
+  const needsSentinel = isNativeApp() || Boolean(room || deepCode || enteredAsGuest) || canLeaveSite;
 
   // The URL the current screen should show. Re-arming pushes a fresh entry, and
   // without this it would inherit whatever URL the popped entry had — a Back
@@ -62,21 +71,28 @@ export default function App() {
   const pathRef = useRef('/');
   pathRef.current = room ? `/r/${room.code}` : deepCode ? `/r/${deepCode}` : '/';
 
-  const backRef = useRef<() => boolean>(() => false);
+  // 'stayed' — we moved within the app, so hold on to the sentinel.
+  // 'leaving' — a prompt is up whose confirm walks out of the site. Re-arming
+  //   here would be self-defeating: the confirm's own history step would pop our
+  //   fresh entry, fire popstate, and be swallowed as "dismiss the dialog".
+  const backRef = useRef<() => 'stayed' | 'leaving'>(() => 'stayed');
   backRef.current = () => {
     // An open dialog absorbs Back (dismiss it) instead of stacking prompts.
-    if (askExit || askLeave || askLogout) { setAskExit(false); setAskLeave(false); setAskLogout(false); return true; }
+    if (askExit || askLeave || askLogout) { setAskExit(false); setAskLeave(false); setAskLogout(false); return 'stayed'; }
     // Leaving a room is disruptive for everyone in it, so confirm first.
-    if (room) { setAskLeave(true); return true; }
-    if (deepCode) { setDeepCode(null); return true; }    // invite screen → lobby/auth
-    // Signed in at the lobby, there's no earlier app screen to reach. In the app
-    // that means Back would close Wavelength, so it confirms ending the session.
-    // On the web it means the browser's Back — which should do what it says and
-    // return to the page the user came from. The session cookie survives, so
-    // they come back signed in; nothing is lost by leaving.
-    if (user) { if (!isNativeApp()) return false; setAskLogout(true); return true; }
-    if (enteredAsGuest) { setEnteredAsGuest(false); return true; } // guest lobby → sign in
-    return false;                                        // at the sign-in screen
+    if (room) { setAskLeave(true); return 'stayed'; }
+    if (deepCode) { setDeepCode(null); return 'stayed'; }    // invite screen → lobby/auth
+    if (enteredAsGuest && !user) { setEnteredAsGuest(false); return 'stayed'; } // guest lobby → sign in
+    // Nothing of the app sits behind this screen. Back ends the session either
+    // way; in a browser it also returns the user to the page they came from.
+    if (user) {
+      if (isNativeApp()) { setAskLogout('stay'); return 'stayed'; }
+      setAskLogout('leave');
+      return 'leaving';
+    }
+    // The sign-in screen: only reachable here when Back has somewhere to go.
+    setAskExit(true);
+    return isNativeApp() ? 'stayed' : 'leaving';
   };
 
   // A Back press consumes the sentinel, so re-arming has to happen after the
@@ -85,6 +101,9 @@ export default function App() {
   const [popTick, setPopTick] = useState(0);
   const needsRef = useRef(needsSentinel);
   needsRef.current = needsSentinel;
+  // While one of these is up, the sentinel must stay consumed — see backRef.
+  const leavePromptRef = useRef(false);
+  leavePromptRef.current = !isNativeApp() && (askExit || askLogout === 'leave');
 
   useEffect(() => {
     if (needsSentinel && !isArmed()) window.history.pushState({ wlBack: true }, '', pathRef.current);
@@ -93,19 +112,15 @@ export default function App() {
   useEffect(() => {
     const arm = () => window.history.pushState({ wlBack: true }, '', pathRef.current);
     function onPop() {
-      const handled = backRef.current();
-      setPopTick((n) => n + 1); // re-arm (or don't) once the new screen is committed
-      if (handled) return;
-      // Nothing left to go back through. Closing is a real action in the app, so
-      // it asks first. A browser tab can't be closed by script anyway, and Back
-      // there means "the page I came from" — so step out of the site instead.
-      if (isNativeApp()) { setAskExit(true); return; }
-      window.history.back();
+      // Re-arm once the screen change is committed — unless a prompt is up that
+      // will walk out of the site, which needs the entry left alone.
+      if (backRef.current() === 'stayed') setPopTick((n) => n + 1);
     }
     // Coming back from the background (or a restored WebView) can leave us
     // without the sentinel — without this, the next Back closes the app and the
     // exit prompt never appears again.
     function reArm() {
+      if (leavePromptRef.current) return;
       if (document.visibilityState === 'visible' && needsRef.current && !isArmed()) arm();
     }
     window.addEventListener('popstate', onPop);
@@ -115,9 +130,7 @@ export default function App() {
     // In the native app the hardware Back button is delivered here instead —
     // no dependence on the WebView's history stack, which is what broke after
     // relaunching the app.
-    const offNative = onNativeBack(() => {
-      if (!backRef.current()) setAskExit(true);
-    });
+    const offNative = onNativeBack(() => { backRef.current(); });
     return () => {
       window.removeEventListener('popstate', onPop);
       document.removeEventListener('visibilitychange', reArm);
@@ -151,6 +164,14 @@ export default function App() {
     window.history.replaceState({ wlBack: true }, '', `/r/${state.code}`);
   }
 
+  // Dismissing a prompt restores the sentinel: the Back press that raised it
+  // consumed one, and a "leaving" prompt deliberately left it that way.
+  function dismissPrompt() {
+    setAskExit(false);
+    setAskLogout(false);
+    setPopTick((n) => n + 1);
+  }
+
   function leaveRoom() {
     socket.emit('room:leave');
     setRoom(null);
@@ -177,7 +198,7 @@ export default function App() {
       <Lobby
         onJoined={enterRoom}
         onBackToAuth={() => { setFocusAuthForm(true); setEnteredAsGuest(false); }}
-        onRequestLogout={() => setAskLogout(true)}
+        onRequestLogout={() => setAskLogout('stay')}
       />
     );
   } else {
@@ -208,16 +229,23 @@ export default function App() {
       )}
 
       {askLogout && (
-        <div className="modal-backdrop" onClick={() => setAskLogout(false)}>
+        <div className="modal-backdrop" onClick={() => dismissPrompt()}>
           <div className="modal card" onClick={(e) => e.stopPropagation()}>
             <h3>Log out?</h3>
-            <p className="muted">You'll need to sign in again.</p>
+            <p className="muted">
+              {askLogout === 'leave'
+                ? "You'll be signed out and taken back to the page you came from."
+                : "You'll need to sign in again."}
+            </p>
             <div className="modal-actions">
-              <button className="ghost sm-btn" onClick={() => setAskLogout(false)}>Stay</button>
+              <button className="ghost sm-btn" onClick={() => dismissPrompt()}>Stay</button>
               <button className="primary sm-btn" onClick={() => {
+                const leaves = askLogout === 'leave';
                 setAskLogout(false);
                 setEnteredAsGuest(false);
-                void logout();
+                // Sign out first, then step back out of the site — the order
+                // matters, since navigating away cancels an in-flight request.
+                void logout().finally(() => { if (leaves) window.history.back(); });
               }}>Log out</button>
             </div>
           </div>
@@ -225,14 +253,19 @@ export default function App() {
       )}
 
       {askExit && (
-        <div className="modal-backdrop" onClick={() => setAskExit(false)}>
+        <div className="modal-backdrop" onClick={() => dismissPrompt()}>
           <div className="modal card" onClick={(e) => e.stopPropagation()}>
             <h3>Leave Wavelength?</h3>
-            <p className="muted">{isNativeApp() ? 'Close the app?' : 'You can come back any time.'}</p>
+            <p className="muted">
+              {isNativeApp() ? 'Close the app?' : "You'll go back to the page you came from."}
+            </p>
             <div className="modal-actions">
-              <button className="ghost sm-btn" onClick={() => setAskExit(false)}>Stay</button>
-              <button className="primary sm-btn" onClick={() => { setAskExit(false); exitApp(); }}>
-                {isNativeApp() ? 'Exit' : 'Close'}
+              <button className="ghost sm-btn" onClick={() => dismissPrompt()}>Stay</button>
+              <button className="primary sm-btn" onClick={() => {
+                setAskExit(false);
+                if (isNativeApp()) exitApp(); else window.history.back();
+              }}>
+                {isNativeApp() ? 'Exit' : 'Leave'}
               </button>
             </div>
           </div>
