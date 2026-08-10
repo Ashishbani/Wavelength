@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { applyTheme, readThemePref, saveThemePref, watchSystemTheme, type ThemePref } from '../lib/theme.js';
+import { applyTheme, readThemePref, resolveTheme, saveThemePref, watchSystemTheme, type ThemePref } from '../lib/theme.js';
 
 const SunIcon = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -12,22 +12,14 @@ const MoonIcon = () => (
     <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z" />
   </svg>
 );
-const AutoIcon = () => (
-  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
-  </svg>
-);
-
-const ORDER: ThemePref[] = ['system', 'light', 'dark'];
-const LABEL: Record<ThemePref, string> = { system: 'System theme', light: 'Day mode', dark: 'Night mode' };
-
 /**
- * Cycles System → Day → Night. On 'system' it follows the device setting live,
- * so a phone switching to dark at sunset takes the app with it.
+ * A straight Day ↔ Night switch. Until it's used, the stored preference is
+ * 'system', so a first visit matches the device (and follows it live); the
+ * first tap pins an explicit choice.
  */
 export default function ThemeToggle() {
   const [pref, setPref] = useState<ThemePref>(readThemePref);
+  const current = resolveTheme(pref);
 
   useEffect(() => {
     applyTheme(pref);
@@ -36,12 +28,13 @@ export default function ThemeToggle() {
     return watchSystemTheme(() => applyTheme('system'));
   }, [pref]);
 
-  const next = () => setPref(ORDER[(ORDER.indexOf(pref) + 1) % ORDER.length]);
-  const Icon = pref === 'light' ? SunIcon : pref === 'dark' ? MoonIcon : AutoIcon;
+  const target = current === 'dark' ? 'light' : 'dark';
+  const label = target === 'light' ? 'Switch to day mode' : 'Switch to night mode';
 
   return (
-    <button className="theme-toggle" onClick={next} title={`${LABEL[pref]} — tap to change`} aria-label={LABEL[pref]}>
-      <Icon />
+    <button className="theme-toggle" onClick={() => setPref(target)} title={label} aria-label={label}>
+      {/* the icon shows what you'd get, not where you are */}
+      {target === 'light' ? <SunIcon /> : <MoonIcon />}
     </button>
   );
 }
