@@ -14,6 +14,11 @@ function codeFromPath(): string | null {
   return m ? m[1].toUpperCase() : null;
 }
 
+/** Is our Back-intercepting history entry the one currently on top? */
+function isArmed(): boolean {
+  return (window.history.state as { wlBack?: boolean } | null)?.wlBack === true;
+}
+
 export default function App() {
   const { user, loading, logout } = useAuth();
   const [room, setRoom] = useState<RoomState | null>(null);
@@ -39,9 +44,17 @@ export default function App() {
     scrollToTop();
   }, [view]);
 
-  // Back navigation: keep a sentinel history entry so the hardware/browser Back
-  // always fires popstate (instead of closing the app's WebView), then move one
-  // screen back ourselves. At the first screen we ask before exiting.
+  // Back navigation. A sentinel history entry is what turns a Back press into a
+  // popstate we can act on — but holding one when there's nothing to intercept
+  // is what broke the web: it made the browser's Back button look usable, then
+  // swallowed the press, so a tab opened straight onto the app went nowhere.
+  // So on the web the sentinel exists only while an app screen sits "behind"
+  // the current one; at the outermost screen the browser's own Back is left in
+  // charge, and it correctly does nothing when there's no page to return to.
+  // The native shell always keeps one — a Back press there must never fall
+  // through to the WebView's own history.
+  const needsSentinel = isNativeApp() || Boolean(room || deepCode || enteredAsGuest);
+
   // The URL the current screen should show. Re-arming pushes a fresh entry, and
   // without this it would inherit whatever URL the popped entry had — a Back
   // press inside a room used to rewrite the address bar from /r/CODE to /, so a
@@ -66,30 +79,34 @@ export default function App() {
     return false;                                        // at the sign-in screen
   };
 
+  // A Back press consumes the sentinel, so re-arming has to happen after the
+  // screen change it caused has been applied — this counter re-runs the effect
+  // below against the new state instead of the state as it was mid-press.
+  const [popTick, setPopTick] = useState(0);
+  const needsRef = useRef(needsSentinel);
+  needsRef.current = needsSentinel;
+
   useEffect(() => {
-    const armed = () => (window.history.state as { wlBack?: boolean } | null)?.wlBack === true;
+    if (needsSentinel && !isArmed()) window.history.pushState({ wlBack: true }, '', pathRef.current);
+  }, [needsSentinel, popTick]);
+
+  useEffect(() => {
     const arm = () => window.history.pushState({ wlBack: true }, '', pathRef.current);
-    if (!armed()) arm();
     function onPop() {
-      if (backRef.current()) {
-        arm(); // re-arm so the next Back press is ours too
-        return;
-      }
+      const handled = backRef.current();
+      setPopTick((n) => n + 1); // re-arm (or don't) once the new screen is committed
+      if (handled) return;
       // Nothing left to go back through. Closing is a real action in the app, so
       // it asks first. A browser tab can't be closed by script anyway, and Back
-      // there means "the page I came from" — so step out of the site instead of
-      // trapping the user behind a prompt that can't do anything.
-      if (isNativeApp()) { setAskExit(true); arm(); return; }
+      // there means "the page I came from" — so step out of the site instead.
+      if (isNativeApp()) { setAskExit(true); return; }
       window.history.back();
-      // Opened straight into a fresh tab, there may be nowhere to go; if we're
-      // still here, re-arm so in-app Back (leaving a room) keeps working.
-      window.setTimeout(() => { if (!armed()) arm(); }, 150);
     }
     // Coming back from the background (or a restored WebView) can leave us
     // without the sentinel — without this, the next Back closes the app and the
     // exit prompt never appears again.
     function reArm() {
-      if (document.visibilityState === 'visible' && !armed()) arm();
+      if (document.visibilityState === 'visible' && needsRef.current && !isArmed()) arm();
     }
     window.addEventListener('popstate', onPop);
     document.addEventListener('visibilitychange', reArm);
