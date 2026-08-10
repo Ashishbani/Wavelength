@@ -49,37 +49,54 @@
    accents still feel at home and long listening sessions stay easy on the eye. */
 [data-theme='light'] {
   color-scheme: light;
-  --bg-0: #eceaf6;
-  --bg-1: #fbfaff;
-  --surface: rgba(24, 20, 60, 0.035);
-  --surface-2: rgba(24, 20, 60, 0.06);
-  --border: rgba(24, 20, 60, 0.12);
-  --border-strong: rgba(24, 20, 60, 0.22);
-  --text: #1b1836;
-  --muted: #5d5980;
-  --faint: #8b87a8;
-  --online: #12a86b;
-  --danger: #d92a55;
-  --shadow: 0 10px 30px rgba(38, 30, 90, 0.10);
-  --card-bg: rgba(255, 255, 255, 0.82);
-  --card-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.25));
-  --edge-sheen: linear-gradient(140deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 42%);
-  --card-inset: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --hover: rgba(24, 20, 60, 0.07);
-  --input-bg: rgba(255, 255, 255, 0.75);
-  --row-bg: rgba(24, 20, 60, 0.045);
-  --row-hover: rgba(139, 92, 255, 0.10);
-  --track-bg: rgba(24, 20, 60, 0.12);
-  --toast-bg: rgba(255, 255, 255, 0.95);
-  --backdrop: rgba(30, 26, 60, 0.35);
-  --dot-off: #b9b5cc;
-  --aurora-op: 0.45;   /* the glow would wash out white if left at full */
-  --grain-op: 0.03;
-  --cover-op: 0.13;   /* blurred album art muddies a light card */
+  /* A cool neutral page so the white cards read as raised sheets. The earlier
+     lavender-on-lavender left everything floating in one flat wash. */
+  --bg-0: #e6e4f0;
+  --bg-1: #f4f3fa;
+  --surface: rgba(24, 20, 60, 0.04);
+  --surface-2: rgba(24, 20, 60, 0.065);
+  --border: rgba(24, 20, 60, 0.13);
+  --border-strong: rgba(24, 20, 60, 0.26);
+  --text: #171432;
+  --muted: #56517a;
+  --faint: #837ea1;
+  --online: #0e9c62;
+  --danger: #d32148;
+  --shadow: 0 4px 16px rgba(30, 24, 70, 0.09);
+  --card-bg: #ffffff;                 /* opaque: translucency muddied the cards */
+  --card-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0));
+  --edge-sheen: linear-gradient(140deg, rgba(24, 20, 60, 0.05), rgba(24, 20, 60, 0) 45%);
+  --card-inset: none;
+  --hover: rgba(24, 20, 60, 0.06);
+  --input-bg: rgba(24, 20, 60, 0.045); /* a tinted fill so fields read as fields */
+  --row-bg: rgba(24, 20, 60, 0.04);
+  --row-hover: rgba(139, 92, 255, 0.09);
+  --track-bg: rgba(24, 20, 60, 0.13);
+  --toast-bg: #ffffff;
+  --backdrop: rgba(23, 20, 50, 0.38);
+  --dot-off: #bfbbd0;
+  --aurora-op: 0.18;   /* a hint of brand colour; more turns the page muddy */
+  --grain-op: 0;       /* film grain reads as dirt on white */
+  --cover-op: 0.07;   /* just a hint of album colour on a white card */
   --notice-bg: rgba(214, 138, 20, 0.12);
   --notice-border: rgba(214, 138, 20, 0.35);
   --notice-text: #7a4d05;
 }
+
+/* Day-mode component corrections — these look right on dark but not on white. */
+[data-theme='light'] button.primary:disabled {
+  /* a faded gradient turned into an illegible pastel with white text */
+  background: rgba(24, 20, 60, 0.10); color: var(--faint); box-shadow: none; opacity: 1;
+}
+[data-theme='light'] .tabs button.active,
+[data-theme='light'] .auth-tabs button.active {
+  /* segmented-control look: the raised tab is white on a tinted track */
+  background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(30, 24, 70, 0.16);
+}
+[data-theme='light'] input, [data-theme='light'] select { border-color: rgba(24, 20, 60, 0.16); }
+[data-theme='light'] .card { backdrop-filter: none; -webkit-backdrop-filter: none; }
+[data-theme='light'] .chip.join { color: #fff; }
+[data-theme='light'] .np-card { background: #fff; }
 
 * { box-sizing: border-box; }
 
